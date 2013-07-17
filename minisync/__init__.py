@@ -1,10 +1,9 @@
 from sqlalchemy.orm import class_mapper, ColumnProperty
 
-class PermissionException(Exception): pass
 
-def __attributeNames(mapper_class):
-    return [prop.key.lstrip('_') for prop in class_mapper(mapper_class).iterate_properties
-        if isinstance(prop, ColumnProperty)]
+class PermissionError(Exception):
+    pass
+
 
 def unflatten(dictionary):
     resultDict = dict()
@@ -18,6 +17,7 @@ def unflatten(dictionary):
         d[parts[-1]] = value
     return resultDict
 
+
 def require_user(f):
     def inner(*args, **kwargs):
         if not kwargs.get('user'):
@@ -25,7 +25,13 @@ def require_user(f):
         return f(*args, **kwargs)
     return inner
 
-def __resolveAndSetAttribute(mapper_obj, attr_name, attr_val, id_col_name='id'):
+
+def __get_attribute_names(mapper_class):
+    return [prop.key.lstrip('_') for prop in class_mapper(mapper_class).iterate_properties
+            if isinstance(prop, ColumnProperty)]
+
+
+def __resolve_and_set_attribute(mapper_obj, attr_name, attr_val, id_col_name='id'):
     """
     Recursively resolve object-relational mappings until we get to a settable attribute.
     Notes:
@@ -34,7 +40,7 @@ def __resolveAndSetAttribute(mapper_obj, attr_name, attr_val, id_col_name='id'):
         (This method introduces no special vulnerabilities that do not already exist on the current site.
         However, the SyncObject method must be made secure before non-admin users can use it.)
     """
-    if attr_name != id_col_name and attr_name in __attributeNames(mapper_obj.__class__):
+    if attr_name != id_col_name and attr_name in __get_attribute_names(mapper_obj.__class__):
         """
         Terminal attribute; resolves to a column on the current mapper.
         Don't update the ID column.
@@ -47,7 +53,7 @@ def __resolveAndSetAttribute(mapper_obj, attr_name, attr_val, id_col_name='id'):
         If key has ID, update
         Else, append
     """
-    if isinstance(mapper_obj_or_iterable, list): # i-M relation
+    if isinstance(mapper_obj_or_iterable, list):  # i-M relation
         indices_to_update = map(int, attr_val.keys())
         items_to_update_with_indices = list(enumerate(mapper_obj_or_iterable))
         items_to_update = filter(lambda x: hasattr(x[1], id_col_name) and x[0] in indices_to_update, items_to_update_with_indices)
@@ -58,10 +64,9 @@ def __resolveAndSetAttribute(mapper_obj, attr_name, attr_val, id_col_name='id'):
         for item in items_to_update:
             index_to_update, update_mapper_obj = item
             item_to_update = attr_val.get(str(item[0]))
-            for k, v in item_to_update.iteritems(): # Recursively update all changed properties
-                __resolveAndSetAttribute(update_mapper_obj, k, v)
+            for k, v in item_to_update.iteritems():  # Recursively update all changed properties
+                __resolve_and_set_attribute(update_mapper_obj, k, v)
         for _, item_to_add in items_to_associate:
-            # http://stackoverflow.com/questions/6843144/how-to-find-sqlalchemy-remote-side-objects-class-or-class-name-without-db-queri
             item_class = getattr(mapper_obj.__class__, attr_name).property.mapper.class_
             existing_id = item_to_add.get(id_col_name, None)
             if existing_id:
@@ -72,7 +77,7 @@ def __resolveAndSetAttribute(mapper_obj, attr_name, attr_val, id_col_name='id'):
                 item_to_append = item_class()
 
             for k, v in item_to_add.iteritems():
-                __resolveAndSetAttribute(item_to_append, k, v)
+                __resolve_and_set_attribute(item_to_append, k, v)
             mapper_obj_or_iterable.append(item_to_append)
     return mapper_obj
 
@@ -105,13 +110,13 @@ def sync_object(db, mapper_class, mapper_obj_dict, delete=False, id_col_name='id
     query_obj = getattr(mapper_obj, 'query')
     existing_record = query_obj.get(existing_id) if existing_id else None
 
-    if existing_record: # Update or delete
+    if existing_record:
 
         # Delete
         # todo: maybe use HTTP verbs for this?
         if delete:
             if not existing_record.permit_delete(mapper_obj_dict, user=user):
-                raise PermissionException()
+                raise PermissionError()
             db.session.delete(existing_record)
             db.session.flush()
             if commit:
@@ -120,22 +125,22 @@ def sync_object(db, mapper_class, mapper_obj_dict, delete=False, id_col_name='id
 
         # Update
         if not existing_record.permit_update(mapper_obj_dict, user=user):
-            raise PermissionException()
+            raise PermissionError()
 
         for updated_field_name, updated_field_val in mapper_obj_dict.iteritems():
-            __resolveAndSetAttribute(existing_record, updated_field_name, updated_field_val)
+            __resolve_and_set_attribute(existing_record, updated_field_name, updated_field_val)
         db.session.flush()
         db.session.commit()
         return existing_record
 
-    else: 
+    else:
         # Create
         if not mapper_obj.permit_create(mapper_obj_dict, user=user):
-            raise PermissionException()
+            raise PermissionError()
         db.session.add(mapper_obj)
 
         for updated_field_name, updated_field_val in mapper_obj_dict.iteritems():
-            __resolveAndSetAttribute(mapper_obj, updated_field_name, updated_field_val)
+            __resolve_and_set_attribute(mapper_obj, updated_field_name, updated_field_val)
 
         db.session.flush()
         if commit:
