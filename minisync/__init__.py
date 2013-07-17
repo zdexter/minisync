@@ -21,7 +21,7 @@ def unflatten(dictionary):
 def require_user(f):
     def inner(*args, **kwargs):
         if not kwargs.get('user'):
-            raise PermissionException()
+            raise PermissionError()
         return f(*args, **kwargs)
     return inner
 

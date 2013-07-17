@@ -22,6 +22,11 @@ class Thing(db.Model):
     def permit_create(obj_dict, user=None):
         return obj_dict['user_id'] == user.id
 
+    @require_user
+    def permit_update(self, obj_dict, user=None):
+        return (not 'user_id' in obj_dict.keys()
+                and user.id == self.user_id)
+
 
 class SyncUser(db.Model):
     __tablename__ = "users"
