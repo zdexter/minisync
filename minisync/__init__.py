@@ -70,12 +70,17 @@ def __resolve_and_set_attribute(mapper_obj, attr_name, attr_val, id_col_name='id
             existing_record = item_class.query.get(existing_id) if existing_id else None
 
             if existing_record:
+                if not existing_record.permit_update(item, user=user):
+                    raise PermissionError()
+
                 if not existing_record in mapper_obj_or_iterable:
                     mapper_obj_or_iterable.append(existing_record)
                     db.session.add(existing_record)
                 for k, v in item.iteritems():
                     __resolve_and_set_attribute(existing_record, k, v, user=user, db=db)
             else:
+                if not item_class.permit_create(item, user=user):
+                    raise PermissionError()
                 item_to_append = item_class()
 
                 for k, v in item.iteritems():
