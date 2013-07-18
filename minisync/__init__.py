@@ -27,8 +27,6 @@ def require_user(f):
 
 
 def __get_attribute_names(mapper_class):
-    #print [prop.__dict__ for prop in class_mapper(mapper_class).iterate_properties
-    #        if isinstance(prop, ColumnProperty)]
     return [prop.key.lstrip('_') for prop in class_mapper(mapper_class).iterate_properties
             if isinstance(prop, ColumnProperty)]
 
@@ -48,17 +46,17 @@ def __resolve_and_set_attribute(mapper_obj, attr_name, attr_val, id_col_name='id
 
         # if the attribute is an fk, do associated_object.permit_update(...)
         # this is a bit brutal. sqlalchemy :(
-        if attr_name == "parent_id":
-            fks = getattr(mapper_obj.__class__, attr_name).property.columns[0].foreign_keys
-            for fk in fks:
-                table = fk.column.table.name
-                for klass in db.Model._decl_class_registry.values():
-                    if hasattr(klass, '__tablename__') and klass.__tablename__ == table:
-                        associated_class = klass
+        fks = getattr(mapper_obj.__class__, attr_name).property.columns[0].foreign_keys
+        associated_class = None
+        for fk in fks:
+            table = fk.column.table.name
+            for klass in db.Model._decl_class_registry.values():
+                if hasattr(klass, '__tablename__') and klass.__tablename__ == table:
+                    associated_class = klass
 
-            if associated_class:
-                if not associated_class.query.get(attr_val).permit_update({attr_name: attr_val}, user=user):
-                    raise PermissionError()
+        if associated_class:
+            if not associated_class.query.get(attr_val).permit_update({attr_name: attr_val}, user=user):
+                raise PermissionError()
 
         setattr(mapper_obj, attr_name, attr_val)
         return

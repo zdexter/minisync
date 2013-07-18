@@ -41,7 +41,7 @@ class ChildThing(db.Model):
         return True
 
     @require_user
-    def permit_update(obj_dict, user=None):
+    def permit_update(self, obj_dict, user=None):
         return True
 
 
@@ -52,3 +52,7 @@ class SyncUser(db.Model):
     username =  db.Column(db.String(80), unique=True)
     email =     db.Column(db.String(120), unique=True)
     things =    db.relationship('Thing', primaryjoin=Thing.user_id==id, cascade='delete')
+
+    @require_user
+    def permit_update(self, obj_dict, user=None):
+        return user.id == self.id
