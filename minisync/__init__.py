@@ -31,7 +31,7 @@ def __get_attribute_names(mapper_class):
             if isinstance(prop, ColumnProperty)]
 
 
-def __resolve_and_set_attribute(mapper_obj, attr_name, attr_val, id_col_name='id'):
+def __resolve_and_set_attribute(mapper_obj, attr_name, attr_val, id_col_name='id', db=None):
     """
     Recursively resolve object-relational mappings until we get to a settable attribute.
     Notes:
@@ -54,31 +54,25 @@ def __resolve_and_set_attribute(mapper_obj, attr_name, attr_val, id_col_name='id
         Else, append
     """
     if isinstance(mapper_obj_or_iterable, list):  # i-M relation
-        indices_to_update = map(int, attr_val.keys())
-        items_to_update_with_indices = list(enumerate(mapper_obj_or_iterable))
-        items_to_update = filter(lambda x: hasattr(x[1], id_col_name) and x[0] in indices_to_update, items_to_update_with_indices)
-        indices_to_update = [x[0] for x in items_to_update]
-
-        items_to_associate = zip(attr_val.keys(), attr_val.values())
-        items_to_associate = filter(lambda x: int(x[0]) not in indices_to_update, items_to_associate)
-        for item in items_to_update:
-            index_to_update, update_mapper_obj = item
-            item_to_update = attr_val.get(str(item[0]))
-            for k, v in item_to_update.iteritems():  # Recursively update all changed properties
-                __resolve_and_set_attribute(update_mapper_obj, k, v)
-        for _, item_to_add in items_to_associate:
+        for item in attr_val:
             item_class = getattr(mapper_obj.__class__, attr_name).property.mapper.class_
-            existing_id = item_to_add.get(id_col_name, None)
-            if existing_id:
-                # TODO: Make sure user has permission to associate these objects
-                query = item_class.query
-                item_to_append = query.get(existing_id)
-            else:
-                item_to_append = item_class()
 
-            for k, v in item_to_add.iteritems():
-                __resolve_and_set_attribute(item_to_append, k, v)
-            mapper_obj_or_iterable.append(item_to_append)
+            existing_id = item.get(id_col_name)
+            existing_record = item_class.query.get(existing_id) if existing_id else None
+
+            if existing_record:
+                for k, v in item.iteritems():
+                    __resolve_and_set_attribute(existing_record, k, v)
+            else:
+                if existing_id:
+                    item_to_append = item_class.query.get(existing_id)
+                else:
+                    item_to_append = item_class()
+
+                for k, v in item.iteritems():
+                    __resolve_and_set_attribute(item_to_append, k, v)
+                mapper_obj_or_iterable.append(item_to_append)
+                db.session.add(item_to_append)
     return mapper_obj
 
 
@@ -128,7 +122,7 @@ def sync_object(db, mapper_class, mapper_obj_dict, delete=False, id_col_name='id
             raise PermissionError()
 
         for updated_field_name, updated_field_val in mapper_obj_dict.iteritems():
-            __resolve_and_set_attribute(existing_record, updated_field_name, updated_field_val)
+            __resolve_and_set_attribute(existing_record, updated_field_name, updated_field_val, db=db)
         db.session.flush()
         db.session.commit()
         return existing_record
@@ -140,7 +134,7 @@ def sync_object(db, mapper_class, mapper_obj_dict, delete=False, id_col_name='id
         db.session.add(mapper_obj)
 
         for updated_field_name, updated_field_val in mapper_obj_dict.iteritems():
-            __resolve_and_set_attribute(mapper_obj, updated_field_name, updated_field_val)
+            __resolve_and_set_attribute(mapper_obj, updated_field_name, updated_field_val, db=db)
 
         db.session.flush()
         if commit:

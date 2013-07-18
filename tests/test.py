@@ -39,6 +39,9 @@ class ModelsTestCase(TestCase):
         self.db.session.remove()
         self.db.drop_all()
  
+    # Basic crud operations, not handling relationships beyond setting FKs
+    # ------------------------------------------------------------------------
+
     def test_create(self):
         new_thing = sync_object(self.db, models.Thing, {'user_id': 1, 'description': "Hello."}, user=self.user)
 
@@ -58,6 +61,42 @@ class ModelsTestCase(TestCase):
     def test_update_permission(self):
         sync_object(self.db, models.Thing, {'id': 1, 'user_id': 2, 'description': "blergh"}, user=self.user)
 
+    # Relationship stuffs
+    # ------------------------------------------------------------------------
+
+    def test_parent_create(self):
+        parent = sync_object(self.db, models.Thing, {
+            'children': [{
+                'description': "Foobar"
+            }],
+            'user_id': 1,
+            'description': "Foobaz"
+        }, user=self.user)
+        self.assertEqual(parent.description, "Foobaz")
+        self.assertEqual(parent.children[0].description, "Foobar")
+
+    def test_parent_update(self):
+        old = sync_object(self.db, models.Thing, {
+            'children': [{
+                'description': "Foobar"
+            }],
+            'user_id': 1,
+            'description': "Foobaz"
+        }, user=self.user)
+        old_id = old.children[0].id
+
+        parent = sync_object(self.db, models.Thing, {
+            'children': [{
+                'id': 1,
+                'description': 'Boom blergh blegh' # I'm really good at this naming thing
+            }],
+            'id': old.id
+        }, user=self.user)
+        self.assertEqual(parent.children[0].id, old_id)
+        self.assertEqual(parent.children[0].description, "Boom blergh blegh")
+
+    def test_associate_existing(self):
+        pass
 
 if __name__ == '__main__':
     unittest.main()
