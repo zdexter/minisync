@@ -33,7 +33,7 @@ class ChildThing(db.Model):
     __tablename__ = "child_things"
     id =            db.Column(db.Integer, primary_key=True)
     description =   db.Column(db.Text)
-    parent_id =     db.Column(db.Integer, db.ForeignKey('things.id', deferrable=True, ondelete='CASCADE'), nullable=False)
+    parent_id =     db.Column(db.Integer, db.ForeignKey('things.id', deferrable=True, ondelete='CASCADE'))
 
     @staticmethod
     @require_user

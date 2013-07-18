@@ -35,6 +35,11 @@ class ThingData(DataSet):
         user_id = 2
         description = "Baz"
 
+class ChildThingData(DataSet):
+
+    class child_thing01:
+        thing_id = 3
+        description = "Blergh"
  
 # A simple trick for installing all fixtures from an external module.
 all_data = (SyncUserData, ThingData,)

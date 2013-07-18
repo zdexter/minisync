@@ -96,7 +96,26 @@ class ModelsTestCase(TestCase):
         self.assertEqual(parent.children[0].description, "Boom blergh blegh")
 
     def test_associate_existing(self):
-        pass
+        child = sync_object(self.db, models.ChildThing, {
+            'description': 'Foobar'
+        }, user=self.user)
+
+        parent = sync_object(self.db, models.Thing, {
+            'children': [{
+                'id': child.id
+            }],
+            'id': 1
+        }, user=self.user)
+        self.assertEqual(parent.children[0].description, 'Foobar')
+
+    @raises(PermissionError)
+    def test_bad_association(self):
+        # make sure users can't add objects to other users' objects via FK
+
+        child = sync_object(self.db, models.ChildThing, {
+            'description': 'Barf',
+            'parent_id': 3  #owned by userid 2
+        }, user=self.user)
 
 if __name__ == '__main__':
     unittest.main()

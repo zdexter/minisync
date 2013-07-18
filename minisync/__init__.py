@@ -27,32 +27,43 @@ def require_user(f):
 
 
 def __get_attribute_names(mapper_class):
+    #print [prop.__dict__ for prop in class_mapper(mapper_class).iterate_properties
+    #        if isinstance(prop, ColumnProperty)]
     return [prop.key.lstrip('_') for prop in class_mapper(mapper_class).iterate_properties
             if isinstance(prop, ColumnProperty)]
 
+from sqlalchemy.ext.declarative import declarative_base
 
-def __resolve_and_set_attribute(mapper_obj, attr_name, attr_val, id_col_name='id', db=None):
+Base = declarative_base()
+
+def __resolve_and_set_attribute(mapper_obj, attr_name, attr_val, id_col_name='id', db=None, user=None):
     """
     Recursively resolve object-relational mappings until we get to a settable attribute.
-    Notes:
-        DO NOT use this for non-admin users for now, as we allow association of arbitrary objects.
-        We need proper validation and permissions hooks first.
-        (This method introduces no special vulnerabilities that do not already exist on the current site.
-        However, the SyncObject method must be made secure before non-admin users can use it.)
     """
     if attr_name != id_col_name and attr_name in __get_attribute_names(mapper_obj.__class__):
         """
         Terminal attribute; resolves to a column on the current mapper.
         Don't update the ID column.
         """
+
+        # if the attribute is an fk, do associated_object.permit_update(...)
+        # this is a bit brutal. sqlalchemy :(
+        if attr_name == "parent_id":
+            fks = getattr(mapper_obj.__class__, attr_name).property.columns[0].foreign_keys
+            for fk in fks:
+                table = fk.column.table.name
+                for klass in db.Model._decl_class_registry.values():
+                    if hasattr(klass, '__tablename__') and klass.__tablename__ == table:
+                        associated_class = klass
+
+            if associated_class:
+                if not associated_class.query.get(attr_val).permit_update({attr_name: attr_val}, user=user):
+                    raise PermissionError()
+
         setattr(mapper_obj, attr_name, attr_val)
         return
+
     mapper_obj_or_iterable = getattr(mapper_obj, attr_name)
-    """
-    If mapper side is list, then for each key in attr_val, do decision proc:
-        If key has ID, update
-        Else, append
-    """
     if isinstance(mapper_obj_or_iterable, list):  # i-M relation
         for item in attr_val:
             item_class = getattr(mapper_obj.__class__, attr_name).property.mapper.class_
@@ -61,18 +72,19 @@ def __resolve_and_set_attribute(mapper_obj, attr_name, attr_val, id_col_name='id
             existing_record = item_class.query.get(existing_id) if existing_id else None
 
             if existing_record:
+                if not existing_record in mapper_obj_or_iterable:
+                    mapper_obj_or_iterable.append(existing_record)
+                    db.session.add(existing_record)
                 for k, v in item.iteritems():
-                    __resolve_and_set_attribute(existing_record, k, v)
+                    __resolve_and_set_attribute(existing_record, k, v, user=user, db=db)
             else:
-                if existing_id:
-                    item_to_append = item_class.query.get(existing_id)
-                else:
-                    item_to_append = item_class()
+                item_to_append = item_class()
 
                 for k, v in item.iteritems():
-                    __resolve_and_set_attribute(item_to_append, k, v)
+                    __resolve_and_set_attribute(item_to_append, k, v, user=user, db=db)
                 mapper_obj_or_iterable.append(item_to_append)
                 db.session.add(item_to_append)
+
     return mapper_obj
 
 
@@ -122,7 +134,7 @@ def sync_object(db, mapper_class, mapper_obj_dict, delete=False, id_col_name='id
             raise PermissionError()
 
         for updated_field_name, updated_field_val in mapper_obj_dict.iteritems():
-            __resolve_and_set_attribute(existing_record, updated_field_name, updated_field_val, db=db)
+            __resolve_and_set_attribute(existing_record, updated_field_name, updated_field_val, db=db, user=user)
         db.session.flush()
         db.session.commit()
         return existing_record
@@ -134,7 +146,7 @@ def sync_object(db, mapper_class, mapper_obj_dict, delete=False, id_col_name='id
         db.session.add(mapper_obj)
 
         for updated_field_name, updated_field_val in mapper_obj_dict.iteritems():
-            __resolve_and_set_attribute(mapper_obj, updated_field_name, updated_field_val, db=db)
+            __resolve_and_set_attribute(mapper_obj, updated_field_name, updated_field_val, db=db, user=user)
 
         db.session.flush()
         if commit:
