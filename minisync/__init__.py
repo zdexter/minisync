@@ -28,7 +28,7 @@ def _unflatten(dictionary):
 
 def _get_attribute_names(mapper_class):
     return [prop.key.lstrip('_') for prop in class_mapper(mapper_class).iterate_properties
-        if isinstance(prop, ColumnProperty)]
+            if isinstance(prop, ColumnProperty)]
 
 
 class Minisync(object):
@@ -111,7 +111,7 @@ class Minisync(object):
             """
             Terminal attribute; resolves to a column on the current mapper.
             """
-            
+
             # Don't update the ID column.
             if attr_name == id_col_name:
                 return
@@ -161,5 +161,3 @@ class Minisync(object):
                     db.session.add(item_to_append)
 
         return mapper_obj
-
-
