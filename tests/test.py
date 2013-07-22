@@ -10,7 +10,7 @@ from flask.ext.principal import Principal, Identity, AnonymousIdentity, \
  
 import fixtures
 import models
-from minisync import sync_object, PermissionError
+from minisync import Minisync, PermissionError
  
 class ModelsTestCase(TestCase):
 
@@ -26,6 +26,8 @@ class ModelsTestCase(TestCase):
         from models import db
         db.init_app(app)
         self.db = db
+
+        self.sync = Minisync(self.db)
 
         return app
  
@@ -43,29 +45,29 @@ class ModelsTestCase(TestCase):
     # ------------------------------------------------------------------------
 
     def test_create(self):
-        new_thing = sync_object(self.db, models.Thing, {'user_id': 1, 'description': "Hello."}, user=self.user)
+        new_thing = self.sync(models.Thing, {'user_id': 1, 'description': "Hello."}, user=self.user)
 
         self.assertEqual(new_thing.user_id, 1)
         self.assertEqual(new_thing.description, "Hello.")
 
     @raises(PermissionError)
     def test_create_permission(self):
-        new_thing = sync_object(self.db, models.Thing, {'user_id': 2, 'description': "Hello."}, user=self.user)
+        new_thing = self.sync(models.Thing, {'user_id': 2, 'description': "Hello."}, user=self.user)
 
     def test_update(self):
-        sync_object(self.db, models.Thing, {'id': 1, 'description': "blergh"}, user=self.user)
+        self.sync(models.Thing, {'id': 1, 'description': "blergh"}, user=self.user)
         updated_thing = models.Thing.query.filter_by(id=1).first()
         self.assertEqual(updated_thing.description, "blergh")
 
     @raises(PermissionError)
     def test_update_permission(self):
-        sync_object(self.db, models.Thing, {'id': 1, 'user_id': 2, 'description': "blergh"}, user=self.user)
+        self.sync(models.Thing, {'id': 1, 'user_id': 2, 'description': "blergh"}, user=self.user)
 
     # Relationship stuffs
     # ------------------------------------------------------------------------
 
     def test_parent_create(self):
-        parent = sync_object(self.db, models.Thing, {
+        parent = self.sync(models.Thing, {
             'children': [{
                 'description': "Foobar"
             }],
@@ -76,7 +78,7 @@ class ModelsTestCase(TestCase):
         self.assertEqual(parent.children[0].description, "Foobar")
 
     def test_parent_update(self):
-        old = sync_object(self.db, models.Thing, {
+        old = self.sync(models.Thing, {
             'children': [{
                 'description': "Foobar"
             }],
@@ -85,7 +87,7 @@ class ModelsTestCase(TestCase):
         }, user=self.user)
         old_id = old.children[0].id
 
-        parent = sync_object(self.db, models.Thing, {
+        parent = self.sync(models.Thing, {
             'children': [{
                 'id': 1,
                 'description': 'Boom blergh blegh' # I'm really good at this naming thing
@@ -96,11 +98,11 @@ class ModelsTestCase(TestCase):
         self.assertEqual(parent.children[0].description, "Boom blergh blegh")
 
     def test_associate_existing(self):
-        child = sync_object(self.db, models.ChildThing, {
+        child = self.sync(models.ChildThing, {
             'description': 'Foobar'
         }, user=self.user)
 
-        parent = sync_object(self.db, models.Thing, {
+        parent = self.sync(models.Thing, {
             'children': [{
                 'id': child.id
             }],
@@ -112,7 +114,7 @@ class ModelsTestCase(TestCase):
     def test_bad_association(self):
         # make sure users can't add objects to other users' objects via FK
 
-        child = sync_object(self.db, models.ChildThing, {
+        child = self.sync(models.ChildThing, {
             'description': 'Barf',
             'parent_id': 3  #owned by userid 2
         }, user=self.user)
