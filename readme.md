@@ -3,7 +3,7 @@ Minisync
 * Covered by tests
 * Secure
 * Usable anywhere SQLAlchemy is used
-* Definitely doesn't pass PEP8
+* ~~*Definitely doesn't*~~ Almost passes PEP8
 
 ## Testing
 
