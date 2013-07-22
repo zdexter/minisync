@@ -130,6 +130,9 @@ class Minisync(object):
                 if not associated_class.query.get(attr_val).permit_update({attr_name: attr_val}, user=user):
                     raise PermissionError()
 
+            if not attr_name in mapper_obj.__allow_update__:
+                raise PermissionError()
+
             setattr(mapper_obj, attr_name, attr_val)
             return
 

@@ -13,6 +13,7 @@ def create_tables(app):
 
 class Thing(db.Model):
     __tablename__ = "things"
+    __allow_update__ = ["description", "children", "user_id"]
     id =            db.Column(db.Integer, primary_key=True)
     user_id =       db.Column(db.Integer, db.ForeignKey('users.id', deferrable=True, ondelete="CASCADE"), nullable=False)
     description =   db.Column(db.Text)
@@ -26,11 +27,12 @@ class Thing(db.Model):
 
     @require_user
     def permit_update(self, obj_dict, user=None):
-        return not 'user_id' in obj_dict.keys() and user.id == self.user_id
+        return user.id == self.user_id
 
 
 class ChildThing(db.Model):
     __tablename__ = "child_things"
+    __allow_update__ = ["description", "parent_id"]
     id =            db.Column(db.Integer, primary_key=True)
     description =   db.Column(db.Text)
     parent_id =     db.Column(db.Integer, db.ForeignKey('things.id', deferrable=True, ondelete='CASCADE'))
@@ -52,6 +54,8 @@ class SyncUser(db.Model):
     username =  db.Column(db.String(80), unique=True)
     email =     db.Column(db.String(120), unique=True)
     things =    db.relationship('Thing', primaryjoin=Thing.user_id==id, cascade='delete')
+
+    __allow_update__ = ['things']
 
     @require_user
     def permit_update(self, obj_dict, user=None):

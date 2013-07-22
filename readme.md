@@ -19,7 +19,7 @@ def permit_update(data_dict, user=None)
 
 def permit_delete(data_dict, user=None)
 
-__allow_update__ = ['description', 'children']  # not implemented yet
+__allow_update__ = ['description', 'children']
 ```
 
 ### Permissions & Relationships
