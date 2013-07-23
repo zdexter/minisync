@@ -48,7 +48,7 @@ class ModelsTestCase(TestCase):
     def test_serialize(self):
         new_thing = self.sync(models.Thing, {'user_id': 1, 'description': "Hello."}, user=self.user)
         obj = self.sync.serialize(new_thing)
-        assert {'id': None}
+        assert obj == {'id': None}
 
     # Basic crud operations, not handling relationships beyond setting FKs
     # ------------------------------------------------------------------------
