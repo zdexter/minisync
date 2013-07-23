@@ -1,5 +1,5 @@
 from sqlalchemy.orm import class_mapper, ColumnProperty
-
+from minisync.mixins.sqlalchemy import JsonSerializer
 
 class PermissionError(Exception):
     pass
@@ -32,8 +32,12 @@ def _get_attribute_names(mapper_class):
 
 
 class Minisync(object):
-    def __init__(self, db):
+    def __init__(self, db, serializer=JsonSerializer):
         self.db = db
+        self.serializer = serializer(db)
+
+    def serialize(self, mapper_class_instance):
+        return self.serializer(mapper_class_instance)
 
     def __call__(self, mapper_class, mapper_obj_dict, delete=False, id_col_name='id', commit=True, user=None):
         """

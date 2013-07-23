@@ -8,6 +8,7 @@ from flask.ext.testing import TestCase
 from flask.ext.principal import Principal, Identity, AnonymousIdentity, \
      identity_changed
  
+import unittest
 import fixtures
 import models
 from minisync import Minisync, PermissionError
@@ -41,6 +42,14 @@ class ModelsTestCase(TestCase):
         self.db.session.remove()
         self.db.drop_all()
  
+    # Serialization
+    # ------------------------------------------------------------------------
+
+    def test_serialize(self):
+        new_thing = self.sync(models.Thing, {'user_id': 1, 'description': "Hello."}, user=self.user)
+        obj = self.sync.serialize(new_thing)
+        assert {'id': None}
+
     # Basic crud operations, not handling relationships beyond setting FKs
     # ------------------------------------------------------------------------
 

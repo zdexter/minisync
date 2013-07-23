@@ -14,6 +14,7 @@ def create_tables(app):
 class Thing(db.Model):
     __tablename__ = "things"
     __allow_update__ = ["description", "children", "user_id"]
+    __public__      = ["id"]
     id =            db.Column(db.Integer, primary_key=True)
     user_id =       db.Column(db.Integer, db.ForeignKey('users.id', deferrable=True, ondelete="CASCADE"), nullable=False)
     description =   db.Column(db.Text)
