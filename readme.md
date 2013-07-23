@@ -5,6 +5,21 @@ Minisync
 * Usable anywhere SQLAlchemy is used
 * ~~*Definitely doesn't*~~ Almost passes PEP8
 
+## What does it do?
+
+Mini-sync eliminates mapper-layer profileration by abstracting away useless mapper layers between your database API and your web application client. 
+It implements an object synchronization pattern.
+
+## Declaration of Mapper Layer Independence
+
+-> Mapper layer proliferation is usually bad: Writing mapper layers is one of the biggest pains in modern web application development. So Don't Repeat Yourself with respect to mapper layers.
+
+-> Data access layers are not security devices. The client can be trusted to create, read update and delete certain resources if it can be authorized, authenticated, and permissioned with respect to the resource type or instance being manipulated.
+
+-> Homogenous exception handling: The server should be a black box that will safely accept any input, return a standardized response if that input is invalid, and return a standardized response if that input is valid.
+
+Writing Create, Read, Update and Delete applications should be this easy.
+
 ## Testing
 
 Run `nosetests` from the repo root.
