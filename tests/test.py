@@ -11,7 +11,7 @@ from flask.ext.principal import Principal, Identity, AnonymousIdentity, \
 import unittest
 import fixtures
 import models
-from minisync import Minisync, PermissionError
+from crudad import Crudad, PermissionError
  
 class ModelsTestCase(TestCase):
 
@@ -28,7 +28,7 @@ class ModelsTestCase(TestCase):
         db.init_app(app)
         self.db = db
 
-        self.sync = Minisync(self.db)
+        self.sync = Crudad(self.db)
 
         return app
  
