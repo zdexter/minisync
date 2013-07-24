@@ -14,7 +14,6 @@ def create_tables(app):
 class Thing(db.Model):
     __tablename__ = "things"
     __allow_update__ = ["description", "children", "user_id"]
-    __allow_disassociate__ = ["ChildThing"]
     __public__      = ["id"]
     id =            db.Column(db.Integer, primary_key=True)
     user_id =       db.Column(db.Integer, db.ForeignKey('users.id', deferrable=True, ondelete="CASCADE"), nullable=False)
@@ -31,14 +30,11 @@ class Thing(db.Model):
     def permit_update(self, obj_dict, user=None):
         return user.id == self.user_id
 
-    @require_user
-    def permit_disassociate(self, child, user=None):
-        return str(child.__class__) in self.__allow_disassociate__
-
 class ChildThing(db.Model):
     __tablename__ = "child_things"
     __allow_update__ = ["description", "parent_id"]
     __allow_associate__ = [Thing]
+    __allow_disassociate__ = [('parent_id', Thing)]
     id =            db.Column(db.Integer, primary_key=True)
     description =   db.Column(db.Text)
     parent_id =     db.Column(db.Integer, db.ForeignKey('things.id', deferrable=True, ondelete='CASCADE'))
@@ -55,6 +51,11 @@ class ChildThing(db.Model):
     @require_user
     def permit_associate(self, parent, user=None):
         return parent.__class__ in self.__allow_associate__
+
+    @require_user
+    def permit_disassociate(self, child, user=None):
+        print child
+        return child.__class__.__name__ in self.__allow_disassociate__
 
 class SyncUser(db.Model):
     __tablename__ = "users"

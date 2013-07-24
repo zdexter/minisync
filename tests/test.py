@@ -55,7 +55,6 @@ class ModelsTestCase(TestCase):
 
     def test_create(self):
         new_thing = self.sync(models.Thing, {'user_id': 1, 'description': "Hello."}, user=self.user)
-
         self.assertEqual(new_thing.user_id, 1)
         self.assertEqual(new_thing.description, "Hello.")
 
@@ -127,6 +126,27 @@ class ModelsTestCase(TestCase):
             'description': 'Barf',
             'parent_id': 3  #owned by userid 2
         }, user=self.user)
+    
+    def test_disassociate(self):
+        child = self.sync(models.ChildThing, {
+            'description': 'Foobar'
+        }, user=self.user)
+
+        parent = self.sync(models.Thing, {
+            'children': [{
+                'id': child.id
+            }],
+            'id': 1
+        }, user=self.user)
+
+        parent = self.sync(models.Thing, {
+            'children': [{
+                'id': child.id,
+                '_op': 'disassociate'
+            }],
+            'id': 1,
+            }, user=self.user)
+        self.assertEqual(len(parent.children), 0)
 
 if __name__ == '__main__':
     unittest.main()
