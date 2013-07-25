@@ -43,16 +43,19 @@ class Crudad(object):
     def serialize(self, mapper_class_instance):
         return self.serializer(mapper_class_instance)
 
-    def __call__(self, mapper_class, mapper_obj_dict, id_col_name='id', commit=True, user=None):
+    def __call__(self, mapper_class, property_dict, id_col_name='id', commit=True, user=None):
         """
         Create, update or delete the instance of mapper_class represented by mapper_obj_dict.
+            Builds up a list of changes in the databsae session and treats them as a single database unit of work.
         Arguments:
             mapper_class - a metaclass
-            mapper_obj_dict - a dict, dictionary whose keys are flattened representations of the rows or relations
-                              we want to sync. Ex: `user.email.email` or `personal_statement`
+            property_dict - a dict, dictionary whose keys are JSON representations of the rows or relations
+                              to sync. Ex: `email` or `user`
                               Values can be scalars or lists. Lists are turned into sqlalchemy.orm.collection.InstrumentedList objects.
             [id_col_name] - an int, the name of the attr on mapper_class instances that should serve as an
                             existential check (TODO: Support multi-column primary keys)
+            [commit] - a boolean, whether (True) or not (False) to commit the flushed objects.
+            [user] - , the user as provided by the session backend
         Usage:
             Pass `id` to update (delete=False) or delete (delete=True). Leave out `id` to create.
         Keys on mapper_class_dict or its embedded documents:
@@ -61,136 +64,121 @@ class Crudad(object):
             - Create: ret_obj, the serialized created object, with an ID
             - Update: ret_obj, the serialized updated object, with changed fields only
             - Delete or disassociate: None if deletion successful
+        Transactional guarantees:
+            Atomicity - Either all changes to the database will be flushed, and optionally committed, or none will be.
         Raises:
             TODO
         """
         db = self.db
 
+        self._resolveAndSet(mapper_class, property_dict, user=user, id_col_name=id_col_name)
+        db.session.flush()
+        if commit:
+            db.session.commit()
+        return True
+
+    def _create(self, mapper_class, attr_dict, user=None):
         """
-        if existing_record:
-        else:
-            return self._create(mapper_obj_dict, mapper_obj, user)
         """
-        mapper_obj_dict = _unflatten(mapper_obj_dict)
         mapper_obj = mapper_class()
-        return self.walk_document(mapper_class, mapper_obj_dict, user=user, id_col_name=id_col_name)
+        if not mapper_obj.permit_create(attr_dict, user=user):
+            raise PermissionError()
+        self.db.session.add(mapper_obj)
+        return mapper_obj
     
+    def _getOrCreateMapperObj(self, mapper_class, attr_dict, user, id_col_name):
+        """
+        """
+        if not mapper_class.permit_create(attr_dict, user=user):
+            raise PermissionError()
+        if id_col_name in attr_dict.keys():
+            existing_id = attr_dict.get(id_col_name)
+            mapper_obj = mapper_class()
+            query_obj = getattr(mapper_obj, 'query')
+            mapper_obj = query_obj.get(existing_id) if existing_id else None
+        else:
+            mapper_obj = self._create(mapper_class, attr_dict, user=user)
+        return mapper_obj
+
     def _is_primitive(self, value):
         return isinstance(value, (int, float, bool, str))
 
-    def walk_document(self, parent, child=None, user=None, id_col_name='id'):
+    def _resolveAndSet(self, mapper_class, attr_dict, mapper_obj=None, user=None, id_col_name='id'):
+        """
+        """
         db = self.db
 
         # {D}: Delete
         # No need to proceed further (for example, for updates) if we are doing this
-        op = getattr(parent, '_op', None)
+        op = getattr(mapper_class, '_op', None)
         if op == 'delete':
-            return self._delete(parent, user=user)
-        
-        # Base case
-        if not child:
-            iterable = iter(parent)
-            for k, v in iterable:
-                self.walk_document(k, v)
-            return True
-
-        # {D}: Disassociate
-        # Requires a child object to disassociate from
-        if op == 'disassociate':
-            return self._disassociate(parent, child, user=user)
+            return self._delete(mapper_class, user=user)
        
-        # {U}: Update
-        # Check for terminal attribute that resolves to a column on the current mapper.
-        if type(child) == dict: # and child != id_col_name:# and getattr(parent, child, None): #child in _get_attribute_names(parent.__class__):
-            return self._update(parent, child, user=user)
-        
-        # {A}: Associate
-        mapper_obj_or_iterable = getattr(parent, child)
-        if isinstance(mapper_obj_or_iterable, list):  # i-M relation
-            for item in attr_val:
-                item_class = getattr(mapper_class.__class__, attr_name).property.mapper.class_
-
-                existing_id = item.get(id_col_name)
-                existing_record = item_class.query.get(existing_id) if existing_id else None
-
-                if existing_record:
-                    # Associate an existing item
-                    return self._associate(mapper_class, mapper_obj_or_iterable, existing_record, item, user)
-                else:
-                    # Create a new embedded item
-                    if not item_class.permit_create(item, user=user):
-                        raise PermissionError()
-                    item_to_append = item_class()
-
-                    for k, v in item.iteritems():
-                        self.walk_document(mapper_obj_or_iterable, item_to_append, k, v, user=user)
-                    mapper_obj_or_iterable.append(item_to_append)
-                    db.session.add(item_to_append)
-
-        return mapper_class
-
-    def _create(self, mapper_obj_dict, mapper_obj, user=None):
-        if not mapper_obj.permit_create(mapper_obj_dict, user=user):
-            raise PermissionError()
-        self.db.session.add(mapper_obj)
-
-        for updated_field_name, updated_field_val in mapper_obj_dict.iteritems():
-            mapper_obj_dict['updated_field_name'] = self.walk_document(updated_field_name, updated_field_val, user=user)
-
-        self.db.session.flush()
-        self.db.session.commit()
-        return mapper_obj
-
-    def _update(self, parent, child, user=None):
-        for field, val in child.iteritems():
-            if not parent.permit_update(field, user=user):
-                raise PermissionError()
-            # Don't update the ID column.
-            if field == id_col_name:
-                continue
-            # if the attribute is an fk, check associated_object.permit_update(...)
-            # this is a bit brutal. sqlalchemy :(
-            fks = getattr(parent.__class__, field).property.columns[0].foreign_keys
-            associated_class = None
-            for fk in fks:
-                table = fk.column.table.name
-                for klass in db.Model._decl_class_registry.values():
-                    if hasattr(klass, '__tablename__') and klass.__tablename__ == table:
-                        associated_class = klass
-            if associated_class:
-                if not associated_class.query.get(val).permit_update({field: val}, user=user):
-                    raise PermissionError()
-
-            if not field in mapper_class.__allow_update__:
-                raise PermissionError()
-
-            setattr(mapper_class, field, val)
-
-        self.db.session.flush()
-        self.db.session.commit()
-        return existing_record
-
-    def _delete(self):
-        if not existing_record.permit_delete(mapper_obj_dict, user=user):
-            raise PermissionError()
-        self.db.session.delete(existing_record)
-        self.db.session.flush()
-        if commit:
-            self.db.session.commit()
+        """
+        # {D}: Disassociate
+        # Requires a attr_dict object to disassociate from
+        if op == 'disassociate':
+            return self._disassociate(mapper_class, attr_dict, user=user)
+        """
+        # Get or {C}: Create
+        if not mapper_obj:
+            mapper_obj = self._getOrCreateMapperObj(mapper_class, attr_dict, user, id_col_name)
+        if type(attr_dict) == dict:
+            for attr_name, attr_val in attr_dict.iteritems():
+                # {U}: Update
+                if attr_name != id_col_name and attr_name in _get_attribute_names(mapper_obj.__class__):
+                    # Terminal attribute - resolves to a column on the current mapper.
+                    self._update(mapper_obj, attr_name, attr_val, user=user)
+                else: # Nonterminal - continue resolution with attribute name
+                    """
+                    mapper_class = getattr(mapper_obj, attr_name).__class__
+                    #existing_record = self._getExistingRecord(mapper_class, attr_dict, id_col_name)
+                    self._resolveAndSet(mapper_class, attr_val, mapper_obj=mapper_obj, user=user)
+                    """
+                    # {A}: Associate
+                    mapper_obj_or_list = getattr(mapper_obj, attr_name)
+                    if isinstance(mapper_obj_or_list, list):  # i-M relation
+                        item_class = getattr(mapper_class.__class__, attr_name).property.mapper.class_
+                        for item in attr_val:
+                            item_mapper_obj = _getOrCreateMapperObj(item_class, item, user, id_col_name)
+                            self._associate(item_mapper_obj, item_class, mapper_obj_or_list, item, user)
         return True
 
-    def _associate(self, mapper_obj, mapper_obj_or_iterable, existing_record, item, user):
-        if not (hasattr(existing_record, 'permit_associate') and existing_record.permit_associate(mapper_obj, user=user)):
+    def _update(self, mapper_obj, field, val, user=None):
+        """
+        """
+        mapper_class = mapper_obj.__class__
+        if not mapper_obj.permit_update(field, user=user):
+            raise PermissionError()
+        if not field in mapper_class.__allow_update__:
+            raise PermissionError()
+        setattr(mapper_obj, field, val)
+        return mapper_obj
+
+    def _delete(self, mapper_obj):
+        """
+        """
+        if not existing_record.permit_delete(mapper_obj, user=user):
+            raise PermissionError()
+        self.db.session.delete(mapper_obj)
+        return True
+
+    def _associate(self, parent_obj, child_obj, instrumented_list, item_to_append, user):
+        """
+        """
+        if not (hasattr(child_obj, 'permit_associate') and child_obj.permit_associate(parent_obj, user=user)):
             raise PermissionError()
 
-        if not existing_record in mapper_obj_or_iterable:
-            mapper_obj_or_iterable.append(existing_record)
-            self.db.session.add(existing_record)
+        if not existing_record in mapper_obj_or_list:
+            mapper_obj_or_list.append(item_to_append)
+            self.db.session.add(item_to_append)
         for k, v in item.iteritems():
-            self.walk_document(k, v, user=user)
+            self._resolveAndSet(k, v, user=user)
         return True
 
     def _disassociate(self, parent, child, user):
+        """
+        """
         if not (hasattr(child, 'permit_disassociate') and parent.permit_disassociate(child, user=user)):
             raise PermissionError()
         # TODO: Disassociate from parent
