@@ -87,9 +87,6 @@ class Crudad(object):
             mapper_obj = self._create(mapper_class, attr_dict, user=user)
         return mapper_obj
 
-    def _is_primitive(self, value):
-        return isinstance(value, (int, float, bool, str))
-
     def _resolveAndSet(self, mapper_class, attr_dict, mapper_obj=None, user=None, id_col_name='id'):
         """
         """
