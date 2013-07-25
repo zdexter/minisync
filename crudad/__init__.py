@@ -58,11 +58,11 @@ class Crudad(object):
         """
         db = self.db
 
-        self._resolveAndSet(mapper_class, property_dict, user=user, id_col_name=id_col_name)
+        mapper_obj = self._resolveAndSet(mapper_class, property_dict, user=user, id_col_name=id_col_name)
         db.session.flush()
         if commit:
             db.session.commit()
-        return True
+        return mapper_obj
 
     def _create(self, mapper_class, attr_dict, user=None):
         """
@@ -76,14 +76,14 @@ class Crudad(object):
     def _getOrCreateMapperObj(self, mapper_class, attr_dict, user, id_col_name):
         """
         """
-        if not mapper_class.permit_create(attr_dict, user=user):
-            raise PermissionError()
         if id_col_name in attr_dict.keys():
             existing_id = attr_dict.get(id_col_name)
             mapper_obj = mapper_class()
             query_obj = getattr(mapper_obj, 'query')
             mapper_obj = query_obj.get(existing_id) if existing_id else None
         else:
+            if not mapper_class.permit_create(attr_dict, user=user):
+                raise PermissionError()
             mapper_obj = self._create(mapper_class, attr_dict, user=user)
         return mapper_obj
 
@@ -117,27 +117,21 @@ class Crudad(object):
                     # Terminal attribute - resolves to a column on the current mapper.
                     self._update(mapper_obj, attr_name, attr_val, user=user)
                 else: # Nonterminal - continue resolution with attribute name
-                    """
-                    mapper_class = getattr(mapper_obj, attr_name).__class__
-                    #existing_record = self._getExistingRecord(mapper_class, attr_dict, id_col_name)
-                    self._resolveAndSet(mapper_class, attr_val, mapper_obj=mapper_obj, user=user)
-                    """
                     # {A}: Associate
                     mapper_obj_or_list = getattr(mapper_obj, attr_name)
                     if isinstance(mapper_obj_or_list, list):  # i-M relation
-                        item_class = getattr(mapper_class.__class__, attr_name).property.mapper.class_
+                        item_class = getattr(mapper_class, attr_name).property.mapper.class_
                         for item in attr_val:
-                            item_mapper_obj = _getOrCreateMapperObj(item_class, item, user, id_col_name)
+                            item_mapper_obj = self._getOrCreateMapperObj(item_class, item, user, id_col_name)
                             self._associate(item_mapper_obj, item_class, mapper_obj_or_list, item, user)
-        return True
+        return mapper_obj
 
     def _update(self, mapper_obj, field, val, user=None):
         """
         """
-        mapper_class = mapper_obj.__class__
-        if not mapper_obj.permit_update(field, user=user):
+        if not mapper_obj.permit_update({field: val}, user=user):
             raise PermissionError()
-        if not field in mapper_class.__allow_update__:
+        if not field in mapper_obj.__class__.__allow_update__:
             raise PermissionError()
         setattr(mapper_obj, field, val)
         return mapper_obj

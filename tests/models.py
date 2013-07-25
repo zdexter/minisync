@@ -28,7 +28,7 @@ class Thing(db.Model):
 
     @require_user
     def permit_update(self, obj_dict, user=None):
-        return user.id == self.user_id
+        return user.id == self.user_id or obj_dict.get('user_id', None)
 
 class ChildThing(db.Model):
     __tablename__ = "child_things"
