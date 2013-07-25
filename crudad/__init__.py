@@ -13,19 +13,6 @@ def require_user(f):
     return inner
 
 
-def _unflatten(dictionary):
-    resultDict = dict()
-    for key, value in dictionary.iteritems():
-        parts = key.split(".")
-        d = resultDict
-        for part in parts[:-1]:
-            if part not in d:
-                d[part] = dict()
-            d = d[part]
-        d[parts[-1]] = value
-    return resultDict
-
-
 def _get_attribute_names(mapper_class):
     return [prop.key.lstrip('_') for prop in class_mapper(mapper_class).iterate_properties
             if isinstance(prop, ColumnProperty)]
