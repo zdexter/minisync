@@ -105,15 +105,6 @@ class Crudad(object):
                     # Terminal attribute - resolves to a column on the current mapper.
                     self._update(mapper_obj, attr_name, attr_val, user=user)
                 else: # Nonterminal - continue resolution with attribute name
-                    # {A}: Associate
-                    def _handleRelation(parent, instrumented_list, child, child_attr_dict, user):
-                        op = child_attr_dict.get('_op', None)
-                        # {D}: Disassociate
-                        # Requires a mapper_obj parent object to disassociate from
-                        if op == 'disassociate':
-                            return self._disassociate(parent, instrumented_list, child, user=user)
-                        elif op == 'associate':
-                            return self._associate(parent, instrumented_list, child, child_attr_dict, user=user)
                     # hacky: NotImplementedError is triggered by accessing a hybrid property
                     try:
                         mapper_obj_or_list = getattr(mapper_obj, attr_name)
@@ -121,11 +112,28 @@ class Crudad(object):
                             item_class = getattr(mapper_class, attr_name).property.mapper.class_
                             for child_attr_dict in attr_val:
                                 item_mapper_obj = self._getOrCreateMapperObj(item_class, child_attr_dict, user, id_col_name)
-                                _handleRelation(mapper_obj, mapper_obj_or_list, item_mapper_obj, child_attr_dict, user)
-                                #self._associate(mapper_obj, item_mapper_obj, mapper_obj_or_list, item, user)
+                                # {A,D}: Associate or disassociate, if so instructed
+                                association_modified = self._handleRelation(mapper_obj, mapper_obj_or_list, item_mapper_obj, child_attr_dict, user)
+                                if not association_modified: # It's an update, create or delete
+                                    self._resolveAndSet(item_class, child_attr_dict, item_mapper_obj, user=user)
                     except NotImplementedError:
                         pass
         return mapper_obj
+
+    def _handleRelation(self, parent, instrumented_list, child, child_attr_dict, user):
+        """
+        Associate or disassociate a related object depending on what the client asked for.
+        Return:
+            - True upon success [False]
+        """
+        op = child_attr_dict.get('_op', None)
+        # {D}: Disassociate
+        # Requires a mapper_obj parent object to disassociate from
+        if op == 'disassociate':
+            return self._disassociate(parent, instrumented_list, child, user=user)
+        elif op == 'associate':
+            return self._associate(parent, instrumented_list, child, child_attr_dict, user=user)
+        return False
 
     def _update(self, mapper_obj, field, val, user=None):
         """
