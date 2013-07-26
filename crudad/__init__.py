@@ -99,32 +99,28 @@ class Crudad(object):
         # Get or {C}: Create
         if not mapper_obj:
             mapper_obj = self._getOrCreateMapperObj(mapper_class, attr_dict, user, id_col_name)
-        if type(attr_dict) == dict:
-            for attr_name, attr_val in attr_dict.iteritems():
-                # {U}: Update
-                if attr_name != id_col_name and attr_name in _get_attribute_names(mapper_obj.__class__):
-                    # Terminal attribute - resolves to a column on the current mapper.
-                    self._update(mapper_obj, attr_name, attr_val, user=user)
-                else: # Nonterminal - continue resolution with attribute name
-                    # hacky: NotImplementedError is triggered by accessing a hybrid property
-                    try:
-                        mapper_obj_or_list = getattr(mapper_obj, attr_name)
-                        relations_to_process = []
-                        prop = getattr(mapper_class, attr_name).property
-                        if isinstance(prop, RelationshipProperty):
-                            child_class = prop.mapper.class_
-                            if isinstance(mapper_obj_or_list, list):  # i-M relation
-                                [relations_to_process.append(child_attr_dict) for child_attr_dict in attr_val]
-                            else: # 1-1 or M-1
-                                relations_to_process.append(attr_val)
-                            for child_attr_dict in relations_to_process:
-                                child_mapper_obj = self._getOrCreateMapperObj(child_class, child_attr_dict, user, id_col_name)
-                                # {A,D}: Associate or disassociate, if so instructed
-                                association_modified = self._handleRelation(mapper_obj, mapper_obj_or_list, child_mapper_obj, child_attr_dict, user)
-                                if not association_modified: # It's an update, create or delete
-                                    self._resolveAndSet(child_class, child_attr_dict, child_mapper_obj, user=user)
-                    except NotImplementedError:
-                        pass
+        for attr_name, attr_val in attr_dict.iteritems():
+            # {U}: Update
+            if attr_name != id_col_name and attr_name in _get_attribute_names(mapper_obj.__class__):
+                # Terminal attribute - resolves to a column on the current mapper.
+                self._update(mapper_obj, attr_name, attr_val, user=user)
+            else: # Nonterminal - continue resolution with attribute name
+                # hacky: NotImplementedError is triggered by accessing a hybrid property
+                mapper_obj_or_list = getattr(mapper_obj, attr_name)
+                relations_to_process = []
+                prop = getattr(mapper_class, attr_name)
+                if hasattr(prop, 'property') and isinstance(prop.property, RelationshipProperty):
+                    child_class = prop.property.mapper.class_
+                    if isinstance(mapper_obj_or_list, list):  # i-M relation
+                        [relations_to_process.append(child_attr_dict) for child_attr_dict in attr_val]
+                    else: # 1-1 or M-1
+                        relations_to_process.append(attr_val)
+                    for child_attr_dict in relations_to_process:
+                        child_mapper_obj = self._getOrCreateMapperObj(child_class, child_attr_dict, user, id_col_name)
+                        # {A,D}: Associate or disassociate, if so instructed
+                        association_modified = self._handleRelation(mapper_obj, mapper_obj_or_list, child_mapper_obj, child_attr_dict, user)
+                        if not association_modified: # It's an update, create or delete
+                            self._resolveAndSet(child_class, child_attr_dict, child_mapper_obj, user=user)
         return mapper_obj
 
     def _handleRelation(self, parent, instrumented_list, child, child_attr_dict, user):
@@ -195,6 +191,6 @@ class Crudad(object):
             raise PermissionError()
         # TODO: Disassociate from parent
         instrumented_list.remove(child)
-        self.db.session.add(child)
+        self.db.session.add(parent)
         return True
 

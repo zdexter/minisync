@@ -91,6 +91,7 @@ class ModelsTestCase(TestCase):
                 'description': "Foobar"
             }],
             'user_id': 1,
+            'test': 'yo',
             'description': "Foobaz"
         }, user=self.user)
         old_id = old.children[0].id

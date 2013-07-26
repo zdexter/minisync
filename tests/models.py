@@ -1,6 +1,7 @@
 from crudad import require_user
 from flask.ext.sqlalchemy import SQLAlchemy
 from sqlalchemy import create_engine
+from sqlalchemy.ext.hybrid import hybrid_property
 
 from app import app
 
@@ -29,6 +30,10 @@ class Thing(db.Model):
     @require_user
     def permit_update(self, obj_dict, user=None):
         return user.id == self.user_id or obj_dict.get('user_id', None)
+    
+    @hybrid_property
+    def test(self):
+        return 'hi'
 
 class ChildThing(db.Model):
     __tablename__ = "child_things"
