@@ -126,6 +126,19 @@ class Crudad(object):
     def _update(self, mapper_obj, field, val, user=None):
         """
         """
+        # Begin FK ownership check
+        #    if the attribute is an fk, do associated_object.permit_update(...)
+        fks = getattr(mapper_obj.__class__, field).property.columns[0].foreign_keys
+        associated_class = None
+        for fk in fks:
+            table = fk.column.table.name
+            for klass in self.db.Model._decl_class_registry.values():
+                if hasattr(klass, '__tablename__') and klass.__tablename__ == table:
+                    associated_class = klass
+        if associated_class:
+            if not associated_class.query.get(val).permit_update({field: val}, user=user):
+                raise PermissionError()
+        # End FK ownership check
         if not mapper_obj.permit_update({field: val}, user=user):
             raise PermissionError()
         if not field in mapper_obj.__class__.__allow_update__:
