@@ -115,12 +115,17 @@ class Crudad(object):
                     self._update(mapper_obj, attr_name, attr_val, user=user)
                 else: # Nonterminal - continue resolution with attribute name
                     # {A}: Associate
-                    mapper_obj_or_list = getattr(mapper_obj, attr_name)
-                    if isinstance(mapper_obj_or_list, list):  # i-M relation
-                        item_class = getattr(mapper_class, attr_name).property.mapper.class_
-                        for item in attr_val:
-                            item_mapper_obj = self._getOrCreateMapperObj(item_class, item, user, id_col_name)
-                            self._associate(mapper_obj, item_mapper_obj, mapper_obj_or_list, item, user)
+
+                    # hacky: NotImplementedError is triggered by accessing a hybrid property
+                    try:
+                        mapper_obj_or_list = getattr(mapper_obj, attr_name)
+                        if isinstance(mapper_obj_or_list, list):  # i-M relation
+                            item_class = getattr(mapper_class, attr_name).property.mapper.class_
+                            for item in attr_val:
+                                item_mapper_obj = self._getOrCreateMapperObj(item_class, item, user, id_col_name)
+                                self._associate(mapper_obj, item_mapper_obj, mapper_obj_or_list, item, user)
+                    except NotImplementedError:
+                        pass
         return mapper_obj
 
     def _update(self, mapper_obj, field, val, user=None):
