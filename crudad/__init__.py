@@ -120,7 +120,7 @@ class Crudad(object):
                         item_class = getattr(mapper_class, attr_name).property.mapper.class_
                         for item in attr_val:
                             item_mapper_obj = self._getOrCreateMapperObj(item_class, item, user, id_col_name)
-                            self._associate(item_mapper_obj, item_class, mapper_obj_or_list, item, user)
+                            self._associate(mapper_obj, item_mapper_obj, mapper_obj_or_list, item, user)
         return mapper_obj
 
     def _update(self, mapper_obj, field, val, user=None):
@@ -141,17 +141,19 @@ class Crudad(object):
         self.db.session.delete(mapper_obj)
         return True
 
-    def _associate(self, parent_obj, child_obj, instrumented_list, item_to_append, user):
+    def _associate(self, parent_obj, child_obj, instrumented_list, obj_dict, user):
         """
         """
-        if not (hasattr(child_obj, 'permit_associate') and child_obj.permit_associate(parent_obj, user=user)):
+        if not (hasattr(child_obj, 'permit_associate') and child_obj.permit_associate(parent_obj, obj_dict, user=user)):
             raise PermissionError()
 
-        if not existing_record in mapper_obj_or_list:
-            mapper_obj_or_list.append(item_to_append)
-            self.db.session.add(item_to_append)
-        for k, v in item.iteritems():
-            self._resolveAndSet(k, v, user=user)
+        if not child_obj in instrumented_list:
+            instrumented_list.append(child_obj)
+            self.db.session.add(child_obj)
+        """for k, v in obj_dict.iteritems():
+            print k
+            print v
+            self._resolveAndSet(k, v, user=user)"""
         return True
 
     def _disassociate(self, parent, child, user):

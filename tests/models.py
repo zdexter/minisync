@@ -49,12 +49,11 @@ class ChildThing(db.Model):
         return True
 
     @require_user
-    def permit_associate(self, parent, user=None):
+    def permit_associate(self, parent, obj_dict, user=None):
         return parent.__class__ in self.__allow_associate__
 
     @require_user
-    def permit_disassociate(self, child, user=None):
-        print child
+    def permit_disassociate(self, child, obj_dict, user=None):
         return child.__class__.__name__ in self.__allow_disassociate__
 
 class SyncUser(db.Model):
