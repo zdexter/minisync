@@ -112,7 +112,8 @@ class ModelsTestCase(TestCase):
 
         parent = self.sync(models.Thing, {
             'children': [{
-                'id': child.id
+                'id': child.id,
+                '_op': 'associate'
             }],
             'id': 1
         }, user=self.user)
@@ -134,7 +135,8 @@ class ModelsTestCase(TestCase):
 
         parent = self.sync(models.Thing, {
             'children': [{
-                'id': child.id
+                'id': child.id,
+                '_op': 'associate'
             }],
             'id': 1
         }, user=self.user)
@@ -150,3 +152,4 @@ class ModelsTestCase(TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+

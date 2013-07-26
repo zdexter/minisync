@@ -34,7 +34,7 @@ class ChildThing(db.Model):
     __tablename__ = "child_things"
     __allow_update__ = ["description", "parent_id"]
     __allow_associate__ = [Thing]
-    __allow_disassociate__ = [('parent_id', Thing)]
+    __allow_disassociate__ = ['Thing']
     id =            db.Column(db.Integer, primary_key=True)
     description =   db.Column(db.Text)
     parent_id =     db.Column(db.Integer, db.ForeignKey('things.id', deferrable=True, ondelete='CASCADE'))
@@ -53,8 +53,10 @@ class ChildThing(db.Model):
         return parent.__class__ in self.__allow_associate__
 
     @require_user
-    def permit_disassociate(self, child, obj_dict, user=None):
-        return child.__class__.__name__ in self.__allow_disassociate__
+    def permit_disassociate(self, parent, user=None):
+        allowed = parent.__class__.__name__ in self.__allow_disassociate__
+        owned = user.id == parent.user_id
+        return allowed and owned
 
 class SyncUser(db.Model):
     __tablename__ = "users"
