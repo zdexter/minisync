@@ -1,4 +1,5 @@
 from sqlalchemy.orm import class_mapper, ColumnProperty
+from sqlalchemy.orm.properties import RelationshipProperty
 from crudad.mixins.sqlalchemy import JsonSerializer
 from crudad.exceptions import PermissionError
 
@@ -108,14 +109,20 @@ class Crudad(object):
                     # hacky: NotImplementedError is triggered by accessing a hybrid property
                     try:
                         mapper_obj_or_list = getattr(mapper_obj, attr_name)
-                        if isinstance(mapper_obj_or_list, list):  # i-M relation
-                            item_class = getattr(mapper_class, attr_name).property.mapper.class_
-                            for child_attr_dict in attr_val:
-                                item_mapper_obj = self._getOrCreateMapperObj(item_class, child_attr_dict, user, id_col_name)
+                        relations_to_process = []
+                        prop = getattr(mapper_class, attr_name).property
+                        if isinstance(prop, RelationshipProperty):
+                            child_class = prop.mapper.class_
+                            if isinstance(mapper_obj_or_list, list):  # i-M relation
+                                [relations_to_process.append(child_attr_dict) for child_attr_dict in attr_val]
+                            else: # 1-1 or M-1
+                                relations_to_process.append(attr_val)
+                            for child_attr_dict in relations_to_process:
+                                child_mapper_obj = self._getOrCreateMapperObj(child_class, child_attr_dict, user, id_col_name)
                                 # {A,D}: Associate or disassociate, if so instructed
-                                association_modified = self._handleRelation(mapper_obj, mapper_obj_or_list, item_mapper_obj, child_attr_dict, user)
+                                association_modified = self._handleRelation(mapper_obj, mapper_obj_or_list, child_mapper_obj, child_attr_dict, user)
                                 if not association_modified: # It's an update, create or delete
-                                    self._resolveAndSet(item_class, child_attr_dict, item_mapper_obj, user=user)
+                                    self._resolveAndSet(child_class, child_attr_dict, child_mapper_obj, user=user)
                     except NotImplementedError:
                         pass
         return mapper_obj

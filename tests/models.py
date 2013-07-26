@@ -71,3 +71,4 @@ class SyncUser(db.Model):
     @require_user
     def permit_update(self, obj_dict, user=None):
         return user.id == self.id
+ 
