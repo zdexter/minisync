@@ -52,7 +52,7 @@ class Crudad(object):
         Transactional guarantees:
             Atomicity - Either all changes to the database will be flushed, and optionally committed, or none will be.
         Raises:
-            TODO
+            PermissionError
         """
         db = self.db
 
