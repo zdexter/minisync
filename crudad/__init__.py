@@ -1,9 +1,6 @@
 from sqlalchemy.orm import class_mapper, ColumnProperty
 from crudad.mixins.sqlalchemy import JsonSerializer
-
-class PermissionError(Exception):
-    pass
-
+from crudad.exceptions import PermissionError
 
 def require_user(f):
     def inner(*args, **kwargs):
