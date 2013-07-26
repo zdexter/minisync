@@ -1,4 +1,4 @@
-from crudad import require_user
+from crudad import requireUser
 from flask.ext.sqlalchemy import SQLAlchemy
 from sqlalchemy import create_engine
 from sqlalchemy.ext.hybrid import hybrid_property
@@ -23,11 +23,11 @@ class Thing(db.Model):
                                     cascade='delete', backref=db.backref('parent'))
 
     @staticmethod
-    @require_user
+    @requireUser
     def permit_create(obj_dict, user=None):
         return obj_dict['user_id'] == user.id
 
-    @require_user
+    @requireUser
     def permit_update(self, obj_dict, user=None):
         return user.id == self.user_id or obj_dict.get('user_id', None)
     
@@ -45,19 +45,19 @@ class ChildThing(db.Model):
     parent_id =     db.Column(db.Integer, db.ForeignKey('things.id', deferrable=True, ondelete='CASCADE'))
 
     @staticmethod
-    @require_user
+    @requireUser
     def permit_create(obj_dict, user=None):
         return True
 
-    @require_user
+    @requireUser
     def permit_update(self, obj_dict, user=None):
         return True
 
-    @require_user
+    @requireUser
     def permit_associate(self, parent, obj_dict, user=None):
         return parent.__class__ in self.__allow_associate__
 
-    @require_user
+    @requireUser
     def permit_disassociate(self, parent, user=None):
         allowed = parent.__class__.__name__ in self.__allow_disassociate__
         owned = user.id == parent.user_id
@@ -73,7 +73,7 @@ class SyncUser(db.Model):
 
     __allow_update__ = ['things']
 
-    @require_user
+    @requireUser
     def permit_update(self, obj_dict, user=None):
         return user.id == self.id
  

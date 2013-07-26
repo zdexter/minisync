@@ -3,7 +3,7 @@ from sqlalchemy.orm.properties import RelationshipProperty
 from crudad.mixins.sqlalchemy import JsonSerializer
 from crudad.exceptions import PermissionError
 
-def require_user(f):
+def requireUser(f):
     def inner(*args, **kwargs):
         if not kwargs.get('user'):
             raise PermissionError()
@@ -11,7 +11,7 @@ def require_user(f):
     return inner
 
 
-def _get_attribute_names(mapper_class):
+def _getAttributeNames(mapper_class):
     return [prop.key.lstrip('_') for prop in class_mapper(mapper_class).iterate_properties
             if isinstance(prop, ColumnProperty)]
 
@@ -101,11 +101,10 @@ class Crudad(object):
             mapper_obj = self._getOrCreateMapperObj(mapper_class, attr_dict, user, id_col_name)
         for attr_name, attr_val in attr_dict.iteritems():
             # {U}: Update
-            if attr_name != id_col_name and attr_name in _get_attribute_names(mapper_obj.__class__):
+            if attr_name != id_col_name and attr_name in _getAttributeNames(mapper_obj.__class__):
                 # Terminal attribute - resolves to a column on the current mapper.
                 self._update(mapper_obj, attr_name, attr_val, user=user)
             else: # Nonterminal - continue resolution with attribute name
-                # hacky: NotImplementedError is triggered by accessing a hybrid property
                 mapper_obj_or_list = getattr(mapper_obj, attr_name)
                 relations_to_process = []
                 prop = getattr(mapper_class, attr_name)
