@@ -70,6 +70,9 @@ class ModelsTestCase(TestCase):
         self.sync(models.Thing, {'id': 1, 'description': "blergh"}, user=self.user)
         updated_thing = models.Thing.query.filter_by(id=1).first()
         self.assertEqual(updated_thing.description, "blergh")
+        # Database step
+        thing = models.Thing.query.filter_by(id=1).first()
+        self.assertEqual(thing.description, "blergh")
 
     @raises(PermissionError)
     def test_update_permission(self):
