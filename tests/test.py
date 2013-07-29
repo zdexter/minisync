@@ -97,14 +97,15 @@ class ModelsTestCase(TestCase):
         self.assertEqual(created_thing.children[0].description, "Foobar")
 
     def test_parent_update(self):
+        user = models.SyncUser.query.filter_by(id=3).first()
         old = self.sync(models.Thing, {
             'children': [{
                 'description': "Foobar"
             }],
-            'user_id': 1,
+            'user_id': user.id,
             'test': 'yo',
             'description': "Foobaz"
-        }, user=self.user)
+        }, user=user)
         old_id = old.children[0].id
 
         parent = self.sync(models.Thing, {
@@ -113,9 +114,13 @@ class ModelsTestCase(TestCase):
                 'description': 'Boom blergh blegh' # I'm really good at this naming thing
             }],
             'id': old.id
-        }, user=self.user)
+        }, user=user)
         self.assertEqual(parent.children[0].id, old_id)
         self.assertEqual(parent.children[0].description, "Boom blergh blegh")
+        # Database step
+        thing = models.Thing.query.filter_by(user_id=3).first()
+        self.assertEqual(thing.description, "Foobaz")
+        self.assertEqual(thing.children[0].description, "Boom blergh blegh")
 
     def test_associate_existing(self):
         child = self.sync(models.ChildThing, {
