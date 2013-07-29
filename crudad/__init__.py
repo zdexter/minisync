@@ -257,7 +257,7 @@ class Crudad(object):
         Raises:
             PermissionError
         """
-        if not (hasattr(child, 'permit_disassociate') and child.permit_disassociate(parent, user=user)):
+        if not (hasattr(child, 'permit_disassociate') and child.permit_disassociate(parent_obj, obj_dict, user=user)):
             raise PermissionError()
         instrumented_list.remove(child)
         self.db.session.add(parent)
