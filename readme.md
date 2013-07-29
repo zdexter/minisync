@@ -29,6 +29,8 @@ Run `nosetests` from the repo root.
 
 ## Permissions API
 
+To set up object-relational permissions, set up at least some of the following methods and properties on SQLAlchemy mapper classes:
+
 ```
 @staticmethod
 def permit_create(data_dict, user=None)
@@ -37,8 +39,22 @@ def permit_update(data_dict, user=None)
 
 def permit_delete(data_dict, user=None)
 
+def permit_update(data_dict, user=None)
+
+def permit_associate(parent_obj, obj_dict, user=None))
+
+def permit_disasociate(parent_obj, obj_dict, user=None))
+
 __allow_update__ = ['description', 'children']
+__allow_associate__ = [mapper_class]
+__allow_disassociate__ = ['mapper_class_name']
 ```
+
+### Security
+
+Minisync() takes a `user` keyword argument. This gets passed to each method in the permissions API.
+
+You can specify your authorization rules at the model level just once, and base authorization rules off of the identify of the currently logged-in user.
 
 ### Permissions & Relationships
 
@@ -47,4 +63,96 @@ Given an object that you have update access to with a one-many relationship to a
 * To add an existing child object to the relationship, you need to pass the `permit_update` assertion of the child.
 * To create a new child object to add to the relationship, you need to pass the child's `permit_update` assertion.
 
-When setting an FK, you need to pass the corresponding object's `permit_update` test.
+When associating two objects, you need to pass the corresponding object's `permit_update` test.
+
+## By Example
+
+### Flask example
+
+#### Initialization
+
+```
+# __init__.py
+from minisync import minisync
+app = Flask(__name__)
+db = SQLAlchemy(app)
+sync = Minisync(db)
+```
+
+#### Model layer
+```
+# models.py
+from minisync import requireUser
+
+class Thing(db.Model):
+    __allow_update__ = ["description", "children", "user_id"]
+    __public__      = ["id"]
+    id =            db.Column(db.Integer, primary_key=True)
+    user_id =       db.Column(db.Integer, db.ForeignKey('users.id'))
+    description =   db.Column(db.Text)
+    children =      db.relationship('ChildThing', backref=db.backref('parent'))
+
+    @staticmethod
+    @requireUser
+    def permit_create(obj_dict, user=None):
+        return obj_dict['user_id'] == user.id
+
+    @requireUser
+    def permit_update(self, obj_dict, user=None):
+        return user.id == self.user_id or obj_dict.get('user_id', None)
+
+class ChildThing(db.Model):
+    __allow_update__ = ["description", "parent_id"]
+    __allow_associate__ = [Thing]
+    __allow_disassociate__ = ['Thing']
+    id =            db.Column(db.Integer, primary_key=True)
+    description =   db.Column(db.Text)
+    parent_id =     db.Column(db.Integer, db.ForeignKey('things.id'))
+
+    @staticmethod
+    @requireUser
+    def permit_create(obj_dict, user=None):
+        return True
+
+    @requireUser
+    def permit_update(self, obj_dict, user=None):
+        return True
+
+    @requireUser
+    def permit_associate(self, parent, obj_dict, user=None):
+        return parent.__class__ in self.__allow_associate__
+
+    @requireUser
+    def permit_disassociate(self, parent, user=None):
+        allowed = parent.__class__.__name__ in self.__allow_disassociate__
+        owned = user.id == parent.user_id
+        return allowed and owned
+
+class SyncUser(db.Model):
+    id =        db.Column(db.Integer, primary_key=True)
+    username =  db.Column(db.String(80), unique=True)
+    email =     db.Column(db.String(120), unique=True)
+    things =    db.relationship('Thing', primaryjoin=Thing.user_id==id
+
+    __allow_update__ = ['things']
+
+    @requireUser
+    def permit_update(self, obj_dict, user=None):
+        return user.id == self.id
+```
+#### Controller layer
+
+```
+# controllers.py
+# dict_to_sync is usually a JSON dictionary that comes from the client
+from app import sync
+dict_to_sync = {
+    'children': [{
+        'description': "Foobar"
+    }],
+    'user_id': 1,
+    'description': "Foobaz"
+}
+parent = sync(models.Thing, dict_to_sync,
+			user=session_backend.current_user)
+```
