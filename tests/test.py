@@ -123,18 +123,24 @@ class ModelsTestCase(TestCase):
         self.assertEqual(thing.children[0].description, "Boom blergh blegh")
 
     def test_associate_existing(self):
+        user = models.SyncUser.query.filter_by(id=3).first()
         child = self.sync(models.ChildThing, {
             'description': 'Foobar'
-        }, user=self.user)
+        }, user=user)
 
         parent = self.sync(models.Thing, {
             'children': [{
                 'id': child.id,
                 '_op': 'associate'
             }],
+            'user_id': 3,
             'id': 1
-        }, user=self.user)
+        }, user=user)
         self.assertEqual(parent.children[0].description, 'Foobar')
+
+        # Database step
+        thing = models.Thing.query.filter_by(user_id=3).first()
+        self.assertEqual(thing.children[0].description, "Foobar")
 
     @raises(PermissionError)
     def test_bad_association(self):
