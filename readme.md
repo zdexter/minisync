@@ -10,7 +10,7 @@ A tool to {create, read, update, delete, associate, disassociate} instances of y
 
 ## What does it do?
 
-Crudad eliminates mapper-layer profileration by abstracting away useless mapper layers between your database API and your web application client. 
+Minisync eliminates mapper-layer profileration by abstracting away useless mapper layers between your database API and your web application client. 
 It implements an object synchronization pattern.
 
 ## Declaration of Mapper Layer Independence
