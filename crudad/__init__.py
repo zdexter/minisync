@@ -119,7 +119,8 @@ class Crudad(object):
                         # {A,D}: Associate or disassociate, if so instructed
                         association_modified = self._handleRelation(mapper_obj, mapper_obj_or_list, child_mapper_obj, child_attr_dict, user)
                         if not association_modified: # It's an update, create or delete
-                            self._resolveAndSet(child_class, child_attr_dict, child_mapper_obj, user=user)
+                            child = self._resolveAndSet(child_class, child_attr_dict, child_mapper_obj, user=user)
+                            mapper_obj_or_list.append(child)
         return mapper_obj
 
     def _handleRelation(self, parent, instrumented_list, child, child_attr_dict, user):
