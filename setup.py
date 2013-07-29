@@ -8,5 +8,6 @@ setup(name='Crudad',
       author='Tutorspree',
       author_email='info@tutorspree.com',
       url='https://github.com/Tutorspree/crudad/',
-      packages=['distutils', 'distutils.command'],
+      packages=['crudad'],
      )
+
