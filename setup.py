@@ -7,6 +7,8 @@ setup(name='Crudad',
       description='Object synchronization library for SQLAlchemy',
       author='Tutorspree',
       author_email='info@tutorspree.com',
+      classifiers=['Topic :: Database :: Front-Ends', 
+          'Topic :: Software Development :: Libraries'],
       url='https://github.com/Tutorspree/crudad/',
       packages=['crudad'],
      )
