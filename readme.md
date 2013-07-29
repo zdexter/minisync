@@ -1,4 +1,4 @@
-Crudad
+Minisync
 
 A tool to {create, read, update, delete, associate, disassociate} instances of your SQLAlchemy models by sending the server some JSON representing a changeset. Crudad will serialize the changeset, treat it as a single unit of work, flush it to the database and optionally commit it.
 

@@ -1,4 +1,4 @@
-from crudad import requireUser
+from minisync import requireUser
 from flask.ext.sqlalchemy import SQLAlchemy
 from sqlalchemy import create_engine
 from sqlalchemy.ext.hybrid import hybrid_property

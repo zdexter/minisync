@@ -1,7 +1,7 @@
 from sqlalchemy.orm import class_mapper, ColumnProperty
 from sqlalchemy.orm.properties import RelationshipProperty
-from crudad.mixins.sqlalchemy import JsonSerializer
-from crudad.exceptions import PermissionError
+from minisync.mixins.sqlalchemy import JsonSerializer
+from minisync.exceptions import PermissionError
 
 def requireUser(f):
     def inner(*args, **kwargs):
@@ -16,7 +16,7 @@ def _getAttributeNames(mapper_class):
             if isinstance(prop, ColumnProperty)]
 
 
-class Crudad(object):
+class Minisync(object):
     """
     """
     def __init__(self, db, serializer=JsonSerializer):
