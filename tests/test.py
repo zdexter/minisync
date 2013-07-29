@@ -91,6 +91,10 @@ class ModelsTestCase(TestCase):
         }, user=self.user)
         self.assertEqual(parent.description, "Foobaz")
         self.assertEqual(parent.children[0].description, "Foobar")
+        # Database step
+        created_thing = models.Thing.query.filter_by(description="Foobaz").first()
+        self.assertEqual(created_thing.description, "Foobaz")
+        self.assertEqual(created_thing.children[0].description, "Foobar")
 
     def test_parent_update(self):
         old = self.sync(models.Thing, {
