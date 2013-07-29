@@ -245,7 +245,7 @@ class Crudad(object):
             self.db.session.add(child_obj)
         return True
 
-    def _disassociate(self, parent, instrumented_list, child, user):
+    def _disassociate(self, parent_obj, instrumented_list, child_obj, user):
         """
         Arguments:
             parent - an obj, a mapper class instance representing the row to disassociate from
@@ -257,9 +257,9 @@ class Crudad(object):
         Raises:
             PermissionError
         """
-        if not (hasattr(child, 'permit_disassociate') and child.permit_disassociate(parent_obj, obj_dict, user=user)):
+        if not (hasattr(child_obj, 'permit_disassociate') and child_obj.permit_disassociate(parent_obj, user=user)):
             raise PermissionError()
-        instrumented_list.remove(child)
-        self.db.session.add(parent)
+        instrumented_list.remove(child_obj)
+        self.db.session.add(parent_obj)
         return True
 
