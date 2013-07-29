@@ -54,9 +54,13 @@ class ModelsTestCase(TestCase):
     # ------------------------------------------------------------------------
 
     def test_create(self):
-        new_thing = self.sync(models.Thing, {'user_id': 1, 'description': "Hello."}, user=self.user)
-        self.assertEqual(new_thing.user_id, 1)
-        self.assertEqual(new_thing.description, "Hello.")
+        user = models.SyncUser.query.filter_by(id=3).first()
+        new_thing = self.sync(models.Thing, {'user_id': 3, 'description': "User ID 3 created a thing."}, user=user)
+        self.assertEqual(new_thing.user_id, 3)
+        self.assertEqual(new_thing.description, "User ID 3 created a thing.")
+        # Database step
+        thing = models.Thing.query.filter_by(user_id=3).first()
+        self.assertEqual(thing.description, "User ID 3 created a thing.")
 
     @raises(PermissionError)
     def test_create_permission(self):

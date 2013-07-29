@@ -20,6 +20,10 @@ class SyncUserData(DataSet):
     class user02:
         username = "Bruce"
         email = "bruce@wayneenterprises.com"
+    
+    class user03:
+        username =  "Zach"
+        email = "zach@tutorspree.com"
 
 class ThingData(DataSet):
 
