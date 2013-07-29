@@ -170,12 +170,10 @@ dict_to_sync = {
 parent = sync(models.Thing, dict_to_sync,
 			user=session_backend.current_user)
 ```
-<<<<<<< HEAD
 
 ## Contributing
 
 ### Testing
 
 Run `nosetests` from the repo root.
-=======
->>>>>>> 0babd9b91f077508c33fd70577794c21f6ddb236
+
