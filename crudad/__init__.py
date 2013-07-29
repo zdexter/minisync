@@ -137,12 +137,20 @@ class Crudad(object):
         elif op == 'associate':
             return self._associate(parent, instrumented_list, child, child_attr_dict, user=user)
         return False
-
-    def _update(self, mapper_obj, field, val, user=None):
+    
+    def _checkFkPermissions(self, mapper_obj, field, val, user):
         """
+        Determine whether (True) or not (False) the given user is allowed to update
+            the given foreign key relationship.
+        Arguments:
+            mapper_obj - a mapper class instance, an obj on which `field` is a relational attribute
+            field - a string, the name of the relational attribute
+            val - a type instance, the value of the relational attribute
+            user - a mapper class instance, an obj representing the relevant application user
+        Return:
+            - True if allowed [False]
         """
-        # Begin FK ownership check
-        #    if the attribute is an fk, do associated_object.permit_update(...)
+        # if the attribute is an fk, do associated_object.permit_update(...)
         fks = getattr(mapper_obj.__class__, field).property.columns[0].foreign_keys
         associated_class = None
         for fk in fks:
@@ -152,8 +160,16 @@ class Crudad(object):
                     associated_class = klass
         if associated_class:
             if not associated_class.query.get(val).permit_update({field: val}, user=user):
-                raise PermissionError()
-        # End FK ownership check
+                return False
+        return True
+
+    def _update(self, mapper_obj, field, val, user=None):
+        """
+        """
+        allowed = self._checkFkPermissions(mapper_obj, field, val, user)
+        if not allowed:
+            raise PermissionError()
+
         if not mapper_obj.permit_update({field: val}, user=user):
             raise PermissionError()
         if not field in mapper_obj.__class__.__allow_update__:
@@ -189,7 +205,6 @@ class Crudad(object):
         """
         if not (hasattr(child, 'permit_disassociate') and child.permit_disassociate(parent, user=user)):
             raise PermissionError()
-        # TODO: Disassociate from parent
         instrumented_list.remove(child)
         self.db.session.add(parent)
         return True
