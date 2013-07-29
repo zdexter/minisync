@@ -31,7 +31,7 @@ Run `nosetests` from the repo root.
 
 To set up object-relational permissions, set up at least some of the following methods and properties on SQLAlchemy mapper classes:
 
-```
+```py
 @staticmethod
 def permit_create(data_dict, user=None)
 
@@ -71,7 +71,7 @@ When associating two objects, you need to pass the corresponding object's `permi
 
 #### Initialization
 
-```
+```py
 # __init__.py
 from minisync import minisync
 app = Flask(__name__)
@@ -80,7 +80,8 @@ sync = Minisync(db)
 ```
 
 #### Model layer
-```
+
+```py
 # models.py
 from minisync import requireUser
 
@@ -142,7 +143,7 @@ class SyncUser(db.Model):
 ```
 #### Controller layer
 
-```
+```py
 # controllers.py
 # dict_to_sync is usually a JSON dictionary that comes from the client
 from app import sync
