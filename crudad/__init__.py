@@ -194,10 +194,6 @@ class Crudad(object):
         if not child_obj in instrumented_list:
             instrumented_list.append(child_obj)
             self.db.session.add(child_obj)
-        """for k, v in obj_dict.iteritems():
-            print k
-            print v
-            self._resolveAndSet(k, v, user=user)"""
         return True
 
     def _disassociate(self, parent, instrumented_list, child, user):
