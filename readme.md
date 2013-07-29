@@ -1,6 +1,6 @@
 Minisync
 
-A tool to {create, read, update, delete, associate, disassociate} instances of your SQLAlchemy models by sending the server some JSON representing a changeset. Crudad will serialize the changeset, treat it as a single unit of work, flush it to the database and optionally commit it.
+A tool to {create, read, update, delete, associate, disassociate} instances of your SQLAlchemy models by sending the server some JSON representing a changeset. Minisync will serialize the changeset, treat it as a single unit of work, flush it to the database and optionally commit it.
 
 ## Status
 
@@ -23,9 +23,22 @@ It implements an object synchronization pattern.
 
 Writing Create, Read, Update and Delete applications should be this easy.
 
-## Testing
+## 
 
-Run `nosetests` from the repo root.
+## Mixins
+
+### minisync.mixins.sqlalchemy.JsonSerializer
+
+Use this mixin to turn your models into JSON objects. Then, have JavaScript modify them, send back a diffset, and pass the changes to Minisync().
+
+```
+from minisync.mixins.sqlalchemy import JsonSerializer
+class myModel(db.Model, JsonSerializer):
+	__public__ = ['id', 'name']
+```
+```
+my_model_instance.to_serializable_dict() # dict with 'id' and 'name' keys
+```
 
 ## Permissions API
 
@@ -46,7 +59,7 @@ def permit_associate(parent_obj, obj_dict, user=None)
 def permit_disasociate(parent_obj, obj_dict, user=None)
 
 __allow_update__ = ['description', 'children']
-__allow_associate__ = [mapper_class]
+__allow_associate__ = ['mapper_class_name']
 __allow_disassociate__ = ['mapper_class_name']
 ```
 
@@ -156,3 +169,9 @@ dict_to_sync = {
 parent = sync(models.Thing, dict_to_sync,
 			user=session_backend.current_user)
 ```
+
+## Contributing
+
+### Testing
+
+Run `nosetests` from the repo root.

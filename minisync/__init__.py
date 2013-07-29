@@ -201,13 +201,13 @@ class Minisync(object):
         Raises:
             PermissionError
         """
+        if not field in mapper_obj.__class__.__allow_update__:
+            raise PermissionError()
         allowed = self._checkFkPermissions(mapper_obj, field, val, user)
         if not allowed:
             raise PermissionError()
 
         if not mapper_obj.permit_update({field: val}, user=user):
-            raise PermissionError()
-        if not field in mapper_obj.__class__.__allow_update__:
             raise PermissionError()
         setattr(mapper_obj, field, val)
         return mapper_obj
@@ -237,6 +237,9 @@ class Minisync(object):
         Raises:
             PermissionError
         """
+        if not (hasattr(child_obj, '__allow_associate__') and parent_obj.__class__.__name__ in \
+                child_obj.__class__.__allow_associate__):
+            raise PermissionError()
         if not (hasattr(child_obj, 'permit_associate') and child_obj.permit_associate(parent_obj, obj_dict, user=user)):
             raise PermissionError()
 
@@ -257,6 +260,9 @@ class Minisync(object):
         Raises:
             PermissionError
         """
+        if not (hasattr(child_obj, '__allow_disassociate__') and parent_obj.__class__.__name__ in \
+                child_obj.__class__.__allow_disassociate__):
+            raise PermissionError()
         if not (hasattr(child_obj, 'permit_disassociate') and child_obj.permit_disassociate(parent_obj, user=user)):
             raise PermissionError()
         instrumented_list.remove(child_obj)

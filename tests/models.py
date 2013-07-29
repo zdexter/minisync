@@ -38,7 +38,7 @@ class Thing(db.Model):
 class ChildThing(db.Model):
     __tablename__ = "child_things"
     __allow_update__ = ["description", "parent_id"]
-    __allow_associate__ = [Thing]
+    __allow_associate__ = ['Thing']
     __allow_disassociate__ = ['Thing']
     id =            db.Column(db.Integer, primary_key=True)
     description =   db.Column(db.Text)
@@ -55,7 +55,7 @@ class ChildThing(db.Model):
 
     @requireUser
     def permit_associate(self, parent, obj_dict, user=None):
-        return parent.__class__ in self.__allow_associate__
+        return parent.__class__.__name__ in self.__allow_associate__
 
     @requireUser
     def permit_disassociate(self, parent, user=None):
