@@ -44,7 +44,7 @@ my_model_instance.to_serializable_dict() # dict with 'id' and 'name' keys
 
 To set up object-relational permissions, set up at least some of the following methods and properties on SQLAlchemy mapper classes:
 
-```
+```py
 @staticmethod
 def permit_create(data_dict, user=None)
 
@@ -84,7 +84,7 @@ When associating two objects, you need to pass the corresponding object's `permi
 
 #### Initialization
 
-```
+```py
 # __init__.py
 from minisync import minisync
 app = Flask(__name__)
@@ -93,7 +93,8 @@ sync = Minisync(db)
 ```
 
 #### Model layer
-```
+
+```py
 # models.py
 from minisync import requireUser
 
@@ -155,7 +156,7 @@ class SyncUser(db.Model):
 ```
 #### Controller layer
 
-```
+```py
 # controllers.py
 # dict_to_sync is usually a JSON dictionary that comes from the client
 from app import sync
@@ -169,9 +170,12 @@ dict_to_sync = {
 parent = sync(models.Thing, dict_to_sync,
 			user=session_backend.current_user)
 ```
+<<<<<<< HEAD
 
 ## Contributing
 
 ### Testing
 
 Run `nosetests` from the repo root.
+=======
+>>>>>>> 0babd9b91f077508c33fd70577794c21f6ddb236
