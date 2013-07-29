@@ -18,8 +18,6 @@ def _getAttributeNames(mapper_class):
 
 class Crudad(object):
     """
-    Notes:
-        - The CRUDAD methods always handle database session stuff.
     """
     def __init__(self, db, serializer=JsonSerializer):
         self.db = db
@@ -34,13 +32,13 @@ class Crudad(object):
             Builds up a list of changes in the databsae session and treats them as a single database unit of work.
         Arguments:
             mapper_class - a metaclass
-            property_dict - a dict, dictionary whose keys are JSON representations of the rows or relations
+            property_dict - a dict, a JSON object whose keys are representations of the rows or relations
                               to sync. Ex: `email` or `user`
                               Values can be scalars or lists. Lists are turned into sqlalchemy.orm.collection.InstrumentedList objects.
-            [id_col_name] - an int, the name of the attr on mapper_class instances that should serve as an
-                            existential check (TODO: Support multi-column primary keys)
-            [commit] - a boolean, whether (True) or not (False) to commit the flushed objects.
-            [user] - , the user as provided by the session backend
+            [id_col_name] - a string, the name of the attr on mapper_class instances that should serve as an
+                            existential check (TODO: Support multi-column primary keys) ['id']
+            [commit] - a boolean, whether (True) or not (False) to commit the flushed objects. [False]
+            [user] - a mapper class instance, the user as provided by the session backend [None]
         Usage:
             Pass `id` to update (delete=False) or delete (delete=True). Leave out `id` to create.
         Keys on mapper_class_dict or its embedded documents:
@@ -62,8 +60,18 @@ class Crudad(object):
             db.session.commit()
         return mapper_obj
 
-    def _create(self, mapper_class, attr_dict, user=None):
+    def _create(self, mapper_class, attr_dict, user):
         """
+        Add a mapper class instance to the current ORM session.
+        Arguments:
+            mapper_class - a class, the type of mapper class instance to create
+            attr_dict - a dict, a JSON dictionary of operations to perform on this mapper class
+                instance and any of its children
+            user - an obj, a mapper class instance corresponding to the current application user
+        Return:
+            mapper_obj - an obj, the mapper class instance added to the session
+        Raises:
+            PermissionError()
         """
         mapper_obj = mapper_class()
         if not mapper_obj.permit_create(attr_dict, user=user):
@@ -73,6 +81,12 @@ class Crudad(object):
     
     def _getOrCreateMapperObj(self, mapper_class, attr_dict, user, id_col_name):
         """
+        Retrieve a row corresponding to the given ID column if it exists, and create it in the session
+            if not.
+        Return:
+            mapper_obj - a mapper class instance, the newly-created or just-retrieved mapper class instance
+        Raises:
+            PermissionError
         """
         if id_col_name in attr_dict.keys():
             existing_id = attr_dict.get(id_col_name)
@@ -87,6 +101,9 @@ class Crudad(object):
 
     def _resolveAndSet(self, mapper_class, attr_dict, mapper_obj=None, user=None, id_col_name='id'):
         """
+        Recursively resolve nested JSON objects of arbitrary depth into their corresponding
+            mapper class instances and instrumented attributes.
+            TODO: Do not add() changes on instrumented attributes or lists to the session.
         """
         db = self.db
 
@@ -94,7 +111,7 @@ class Crudad(object):
         # No need to proceed further (for example, for updates) if we are doing this
         op = getattr(mapper_class, '_op', None)
         if op == 'delete':
-            return self._delete(mapper_class, user=user)
+            return self._delete(mapper_class, user)
 
         # Get or {C}: Create
         if not mapper_obj:
@@ -126,6 +143,13 @@ class Crudad(object):
     def _handleRelation(self, parent, instrumented_list, child, child_attr_dict, user):
         """
         Associate or disassociate a related object depending on what the client asked for.
+        Arguments:
+            parent - an obj, a mapper class instance corresponding to the parnet
+            instrumented_list - an obj, the relation with which we should deal
+            child - an obj, a mapper class instance corresponding to the child
+            child_attr_dict - a dict, the JSON dictionary that describes the operations to be performed
+                on the child and any of its children
+            user - an obj, a mapper class instance corresponding to the current application user
         Return:
             - True upon success [False]
         """
@@ -146,7 +170,7 @@ class Crudad(object):
             mapper_obj - a mapper class instance, an obj on which `field` is a relational attribute
             field - a string, the name of the relational attribute
             val - a type instance, the value of the relational attribute
-            user - a mapper class instance, an obj representing the relevant application user
+            user - an obj, a mapper class instance corresponding to the current application user
         Return:
             - True if allowed [False]
         """
@@ -163,8 +187,19 @@ class Crudad(object):
                 return False
         return True
 
-    def _update(self, mapper_obj, field, val, user=None):
+    def _update(self, mapper_obj, field, val, user):
         """
+        Update a given field and value on a mapper class instance in the current ORM session.
+        Arguments:
+            mapper_obj - an obj, the mapper class instance to update
+            field - a string, the name of the attribute to update
+            val - a type instance, the new value of the field
+            user - an obj, a mapper class instance corresponding to the current application user
+        Return:
+            mapper_obj - an obj, a mapper class instance whose attribute value for the given field
+                has been updated with the given value.
+        Raises:
+            PermissionError
         """
         allowed = self._checkFkPermissions(mapper_obj, field, val, user)
         if not allowed:
@@ -177,8 +212,13 @@ class Crudad(object):
         setattr(mapper_obj, field, val)
         return mapper_obj
 
-    def _delete(self, mapper_obj):
+    def _delete(self, mapper_obj, user):
         """
+        Delete the database row corresponding to mapper_obj, if allowed.
+        Return:
+            - True upon success
+        Raises:
+            PermissionError
         """
         if not existing_record.permit_delete(mapper_obj, user=user):
             raise PermissionError()
@@ -187,6 +227,15 @@ class Crudad(object):
 
     def _associate(self, parent_obj, instrumented_list, child_obj, obj_dict, user):
         """
+        Arguments:
+            parent - an obj, a mapper class instance representing the row to associate to
+            instrumented_list - an obj, the relation with which we should associate the child
+            child - an obj, the mapper class instance to associate with the parent
+            user - an obj, a mapper class instance corresponding to the current application user
+        Return:
+            - True upon success
+        Raises:
+            PermissionError
         """
         if not (hasattr(child_obj, 'permit_associate') and child_obj.permit_associate(parent_obj, obj_dict, user=user)):
             raise PermissionError()
@@ -198,6 +247,15 @@ class Crudad(object):
 
     def _disassociate(self, parent, instrumented_list, child, user):
         """
+        Arguments:
+            parent - an obj, a mapper class instance representing the row to disassociate from
+            instrumented_list - an obj, the relation from which to remove the child
+            child - an obj, the mapper class instance to remove from the relation
+            user - an obj, a mapper class instance corresponding to the current application user
+        Return:
+            - True upon success
+        Raises:
+            PermissionError
         """
         if not (hasattr(child, 'permit_disassociate') and child.permit_disassociate(parent, user=user)):
             raise PermissionError()
