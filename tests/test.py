@@ -161,6 +161,7 @@ class ModelsTestCase(TestCase):
                 'id': child.id,
                 '_op': 'associate'
             }],
+            'user_id': 1,
             'id': 1
         }, user=self.user)
 
@@ -172,6 +173,11 @@ class ModelsTestCase(TestCase):
             'id': 1,
             }, user=self.user)
         self.assertEqual(len(parent.children), 0)
+
+        # Database step
+        thing = models.Thing.query.filter_by(user_id=1).first()
+        print thing.children
+        self.assertEqual(thing.children, [])
 
 if __name__ == '__main__':
     unittest.main()
