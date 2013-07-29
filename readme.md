@@ -1,13 +1,16 @@
-Minisync
+Crudad
+
+A tool to {create, read, update, delete, associate, disassociate} instances of your SQLAlchemy models by sending the server some JSON representing a changeset. Crudad will serialize the changeset, treat it as a single unit of work, flush it to the database and optionally commit it.
+
+## Status
 
 * Covered by tests
 * Secure
 * Usable anywhere SQLAlchemy is used
-* ~~*Definitely doesn't*~~ Almost passes PEP8
 
 ## What does it do?
 
-Mini-sync eliminates mapper-layer profileration by abstracting away useless mapper layers between your database API and your web application client. 
+Crudad eliminates mapper-layer profileration by abstracting away useless mapper layers between your database API and your web application client. 
 It implements an object synchronization pattern.
 
 ## Declaration of Mapper Layer Independence
