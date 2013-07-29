@@ -41,9 +41,9 @@ def permit_delete(data_dict, user=None)
 
 def permit_update(data_dict, user=None)
 
-def permit_associate(parent_obj, obj_dict, user=None))
+def permit_associate(parent_obj, obj_dict, user=None)
 
-def permit_disasociate(parent_obj, obj_dict, user=None))
+def permit_disasociate(parent_obj, obj_dict, user=None)
 
 __allow_update__ = ['description', 'children']
 __allow_associate__ = [mapper_class]
