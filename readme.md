@@ -2,11 +2,21 @@ Minisync
 
 A tool to {create, read, update, delete, associate, disassociate} instances of your SQLAlchemy models by sending the server some JSON representing a changeset. Minisync will serialize the changeset, treat it as a single unit of work, flush it to the database and optionally commit it.
 
-## Status
+## Project Info
+
+### Current Status
 
 * Covered by tests
 * Secure
 * Usable anywhere SQLAlchemy is used
+
+### TODO
+
+* Deserialization: Type checking and error handling for invalid types
+* Tests for nested documents
+* Validation hooks (use SQLAlchemy's existing validation tools)
+* Support multi-column primary keys
+
 
 ## What does it do?
 
@@ -23,8 +33,6 @@ It implements an object synchronization pattern.
 
 Writing Create, Read, Update and Delete applications should be this easy.
 
-## 
-
 ## Mixins
 
 ### minisync.mixins.sqlalchemy.JsonSerializer
@@ -38,6 +46,51 @@ class myModel(db.Model, JsonSerializer):
 ```
 ```
 my_model_instance.to_serializable_dict() # dict with 'id' and 'name' keys
+```
+
+## Relational Operations Grammar
+
+Minisync is essentially an object-relational parser that takes JSON strings and serializes them to SQLAlchemy models. Here is the grammar you can use to build these strings.
+
+This grammar uses [EBNF notation](https://en.wikipedia.org/wiki/Extended_Backus%E2%80%93Naur_Form). So {} means repetition, | means alternation and [] means optional.
+
+```py
+syncable = dict(
+	model_module.MapperClassName=model_object,
+	['_op'='associate'|'disassociate'|'delete']);
+
+model_object = attr_dict | item_list;
+
+attr_dict = dict('field_name' = item_list | attr_val);
+
+attr_val = (* any instance of a Python primitive *);
+
+item_list = {dict()} | {attr_dict};
+```
+
+### Grammar Conventions
+
+On the server, any `attr_dict` with a `field_name` == `id_col_name` will be considered an *update*. Any `attr_dict` without a `field_name` that is == `id_col_name` will be considered a *create*.
+
+For example, if id_col_name == 'id', {'id': 3, 'name': 'Jane Doe'} will update the existing record whose id==3, whereas {'name': 'Jane Doe'} will create a new record.
+
+### Examples: Valid Python dictionaries
+
+#### Create a new user; associate a new address record with that user
+
+```py
+{'user_model.MyUser': {'name': 'John Doe', addresses: [{
+											'city': 'New York',
+											'state': 'NY',
+											'_op': 'associate'}]}}
+```
+		
+#### Update: Change name and city
+
+```py
+{'user_model.MyUser': {'_id': 1, 'name': 'Jane Doe', addresses: [{
+											'id': 1,
+											'city': 'Brooklyn'}]}}
 ```
 
 ## Permissions API
@@ -80,96 +133,7 @@ When associating two objects, you need to pass the corresponding object's `permi
 
 ## By Example
 
-### Flask example
-
-#### Initialization
-
-```py
-# __init__.py
-from minisync import minisync
-app = Flask(__name__)
-db = SQLAlchemy(app)
-sync = Minisync(db)
-```
-
-#### Model layer
-
-```py
-# models.py
-from minisync import requireUser
-
-class Thing(db.Model):
-    __allow_update__ = ["description", "children", "user_id"]
-    __public__      = ["id"]
-    id =            db.Column(db.Integer, primary_key=True)
-    user_id =       db.Column(db.Integer, db.ForeignKey('users.id'))
-    description =   db.Column(db.Text)
-    children =      db.relationship('ChildThing', backref=db.backref('parent'))
-
-    @staticmethod
-    @requireUser
-    def permit_create(obj_dict, user=None):
-        return obj_dict['user_id'] == user.id
-
-    @requireUser
-    def permit_update(self, obj_dict, user=None):
-        return user.id == self.user_id or obj_dict.get('user_id', None)
-
-class ChildThing(db.Model):
-    __allow_update__ = ["description", "parent_id"]
-    __allow_associate__ = [Thing]
-    __allow_disassociate__ = ['Thing']
-    id =            db.Column(db.Integer, primary_key=True)
-    description =   db.Column(db.Text)
-    parent_id =     db.Column(db.Integer, db.ForeignKey('things.id'))
-
-    @staticmethod
-    @requireUser
-    def permit_create(obj_dict, user=None):
-        return True
-
-    @requireUser
-    def permit_update(self, obj_dict, user=None):
-        return True
-
-    @requireUser
-    def permit_associate(self, parent, obj_dict, user=None):
-        return parent.__class__ in self.__allow_associate__
-
-    @requireUser
-    def permit_disassociate(self, parent, user=None):
-        allowed = parent.__class__.__name__ in self.__allow_disassociate__
-        owned = user.id == parent.user_id
-        return allowed and owned
-
-class SyncUser(db.Model):
-    id =        db.Column(db.Integer, primary_key=True)
-    username =  db.Column(db.String(80), unique=True)
-    email =     db.Column(db.String(120), unique=True)
-    things =    db.relationship('Thing', primaryjoin=Thing.user_id==id
-
-    __allow_update__ = ['things']
-
-    @requireUser
-    def permit_update(self, obj_dict, user=None):
-        return user.id == self.id
-```
-#### Controller layer
-
-```py
-# controllers.py
-# dict_to_sync is usually a JSON dictionary that comes from the client
-from app import sync
-dict_to_sync = {
-    'children': [{
-        'description': "Foobar"
-    }],
-    'user_id': 1,
-    'description': "Foobaz"
-}
-parent = sync(models.Thing, dict_to_sync,
-			user=session_backend.current_user)
-```
+[1-M Relationships using SQLAlchemy and the Flask microframework](https://github.com/Tutorspree/minisync/wiki/flask-example)
 
 ## Contributing
 
