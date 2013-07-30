@@ -1,6 +1,21 @@
-Minisync
+## Minisync
 
-A tool to {create, read, update, delete, associate, disassociate} instances of your SQLAlchemy models by sending the server some JSON representing a changeset. Minisync will serialize the changeset, treat it as a single unit of work, flush it to the database and optionally commit it.
+Minisync is a tool to {create, read, update, delete, associate, disassociate} instances of your SQLAlchemy models by sending the server some JSON representing a changeset. Minisync will serialize the changeset, treat it as a single unit of work, flush it to the database and optionally commit it.
+
+### What's the goal?
+
+Minisync eliminates mapper-layer profileration by abstracting away useless mapper layers between your database API and your web application client. 
+It does this by implementing an object synchronization pattern.
+
+### Declaration of Mapper Layer Independence
+
+-> Mapper layer proliferation is usually bad: Writing mapper layers is one of the biggest pains in modern web application development. So Don't Repeat Yourself with respect to mapper layers.
+
+-> Data access layers are not security devices. The client can be trusted to create, read update and delete certain resources if it can be authorized, authenticated, and permissioned with respect to the resource type or instance being manipulated.
+
+-> Homogenous exception handling: The server should be a black box that will safely accept any input, return a standardized response if that input is invalid, and return a standardized response if that input is valid.
+
+Writing Create, Read, Update and Delete applications should be this easy.
 
 ## Project Info
 
@@ -16,43 +31,15 @@ A tool to {create, read, update, delete, associate, disassociate} instances of y
 * Tests for nested documents
 * Validation hooks (use SQLAlchemy's existing validation tools)
 * Support multi-column primary keys
-
-
-## What does it do?
-
-Minisync eliminates mapper-layer profileration by abstracting away useless mapper layers between your database API and your web application client. 
-It implements an object synchronization pattern.
-
-## Declaration of Mapper Layer Independence
-
--> Mapper layer proliferation is usually bad: Writing mapper layers is one of the biggest pains in modern web application development. So Don't Repeat Yourself with respect to mapper layers.
-
--> Data access layers are not security devices. The client can be trusted to create, read update and delete certain resources if it can be authorized, authenticated, and permissioned with respect to the resource type or instance being manipulated.
-
--> Homogenous exception handling: The server should be a black box that will safely accept any input, return a standardized response if that input is invalid, and return a standardized response if that input is valid.
-
-Writing Create, Read, Update and Delete applications should be this easy.
-
-## Mixins
-
-### minisync.mixins.sqlalchemy.JsonSerializer
-
-Use this mixin to turn your models into JSON objects. Then, have JavaScript modify them, send back a diffset, and pass the changes to Minisync().
-
-```
-from minisync.mixins.sqlalchemy import JsonSerializer
-class myModel(db.Model, JsonSerializer):
-	__public__ = ['id', 'name']
-```
-```
-my_model_instance.to_serializable_dict() # dict with 'id' and 'name' keys
-```
+* More security documentation
 
 ## Relational Operations Grammar
 
 Minisync is essentially an object-relational parser that takes JSON strings and serializes them to SQLAlchemy models. Here is the grammar you can use to build these strings.
 
 This grammar uses [EBNF notation](https://en.wikipedia.org/wiki/Extended_Backus%E2%80%93Naur_Form). So {} means repetition, | means alternation and [] means optional.
+
+### Formal Definition
 
 ```py
 syncable = dict(
@@ -74,7 +61,7 @@ On the server, any `attr_dict` with a `field_name` == `id_col_name` will be cons
 
 For example, if id_col_name == 'id', {'id': 3, 'name': 'Jane Doe'} will update the existing record whose id==3, whereas {'name': 'Jane Doe'} will create a new record.
 
-### Examples: Valid Python dictionaries
+### Example Derivations
 
 #### Create a new user; associate a new address record with that user
 
@@ -130,6 +117,22 @@ Given an object that you have update access to with a one-many relationship to a
 * To create a new child object to add to the relationship, you need to pass the child's `permit_update` assertion.
 
 When associating two objects, you need to pass the corresponding object's `permit_update` test.
+
+
+## Mixins
+
+### minisync.mixins.sqlalchemy.JsonSerializer
+
+Use this mixin to turn your models into JSON objects. Then, have JavaScript modify them, send back a diffset, and pass the changes to Minisync().
+
+```
+from minisync.mixins.sqlalchemy import JsonSerializer
+class myModel(db.Model, JsonSerializer):
+	__public__ = ['id', 'name']
+```
+```
+my_model_instance.to_serializable_dict() # dict with 'id' and 'name' keys
+```
 
 ## By Example
 
