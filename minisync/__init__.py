@@ -78,7 +78,7 @@ class Minisync(object):
             raise PermissionError()
         self.db.session.add(mapper_obj)
         return mapper_obj
-    
+
     def _getOrCreateMapperObj(self, mapper_class, attr_dict, user, id_col_name):
         """
         Retrieve a row corresponding to the given ID column if it exists, and create it in the session
@@ -161,7 +161,7 @@ class Minisync(object):
         elif op == 'associate':
             return self._associate(parent, instrumented_list, child, child_attr_dict, user=user)
         return False
-    
+
     def _checkFkPermissions(self, mapper_obj, field, val, user):
         """
         Determine whether (True) or not (False) the given user is allowed to update
