@@ -27,6 +27,7 @@ Writing Create, Read, Update and Delete applications should be this easy.
 
 ### TODO
 
+* Document and open source our companion client-side library for AngularJS
 * Deserialization: Type checking and error handling for invalid types
 * Tests for nested documents
 * Validation hooks (use SQLAlchemy's existing validation tools)
