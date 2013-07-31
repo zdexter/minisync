@@ -19,33 +19,43 @@ class ChildThing():
 
 @route('/parent/create', methods=['POST'])
 def create_parent():
+	# Tons of boilerplate
 
 @route('/parent/update', methods=['POST'])
 def update_parent():
+	# Tons of boilerplate
 
 @route('/parent/delete', methods=['POST'])
 def delete_parent():
+	# Tons of boilerplate
 
 @route('/parent', methods=['GET'])
 def get_parent():
+	# Tons of boilerplate
 
 @route('/child/create', methods=['POST'])
 def create_child():
+	# Tons of boilerplate
 
 @route('/child/update', methods=['POST'])
 def update_child():
+	# Tons of boilerplate
 
 @route('/child/delete', methods=['POST'])
 def delete_child():
+	# Tons of boilerplate
 
 @route('/child', methods=['GET'])
 def get_child():
+	# Tons of boilerplate
 
 @route('/parent/add_child', methods['POST'])
 def add_child():
+	# Tons of boilerplate
 
 @route('/parent/remove_child', methods['POST'])
 def remove_child():
+	# Tons of boilerplate
 ```
 
 #### After Minisync: Controllers
@@ -57,7 +67,7 @@ from app import Minisync, models, session_backend
 
 @app.route('/api/syncResources', methods=['POST'])
 def syncResources():
-    data = json.loads(request.data) # {'user_model.User': {'id': 3, 'first_name': 'Joe'}}
+    data = json.loads(request.data) # {'thing_model.ParentThing': {'id': 3, 'name': 'Widget'}}
     for resource_name, attr_dict in data.iteritems():
         mapper_module_name, mapper_class_name = resource_name.split('.')
         mapper_module = getattr(models, mapper_module_name)
@@ -76,12 +86,18 @@ def syncResources():
 
 ```
 
-### What's the goal?
+### What are Minisync's goals?
 
 Minisync eliminates mapper-layer profileration by abstracting away useless mapper layers between your database API and your web application client. 
 It does this by implementing an object synchronization pattern.
 
-### Declaration of Mapper Layer Independence
+#### Principles
+
+- REST endpoint proliferation is a primary source of boilerplate in web applications
+- The server can figure out what to do given a JSON representation of changes made by the client
+- Manipulating data directly is better than creating a custom interface for that data
+
+#### Declaration of Mapper Layer Independence
 
 -> Mapper layer proliferation is usually bad: Writing mapper layers is one of the biggest pains in modern web application development. So Don't Repeat Yourself with respect to mapper layers.
 
