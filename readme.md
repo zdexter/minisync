@@ -94,6 +94,10 @@ def syncResources():
 
 ```
 
+#### Full Example
+
+[1-M Relationships using SQLAlchemy and the Flask microframework](https://github.com/Tutorspree/minisync/wiki/flask-example)
+
 ### What are Minisync's goals?
 
 Minisync eliminates mapper-layer profileration by abstracting away useless mapper layers between your database API and your web application client. 
@@ -232,10 +236,6 @@ class myModel(db.Model, JsonSerializer):
 ```
 my_model_instance.to_serializable_dict() # dict with 'id' and 'name' keys
 ```
-
-## By Example
-
-[1-M Relationships using SQLAlchemy and the Flask microframework](https://github.com/Tutorspree/minisync/wiki/flask-example)
 
 ## Contributing
 
