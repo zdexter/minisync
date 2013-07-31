@@ -2,6 +2,80 @@
 
 Minisync is a tool to {create, read, update, delete, associate, disassociate} instances of your SQLAlchemy models by sending the server some JSON representing a changeset. Minisync will serialize the changeset, treat it as a single unit of work, flush it to the database and optionally commit it.
 
+### Before and After
+
+#### Before Minisync: Controllers (Flask example)
+
+Controllers may be hand-rolled, generated from models, or implicit in something like Flask-Rest{ful,less}. Clients use a RESTful interface (and may use HTTP verbs) because that's the way things were done when websites consisted of forms that were each associated with a clear action (create, read, update, delete, associate, disassociate).
+
+```py
+# Models
+
+class ParentThing():
+
+class ChildThing():
+
+# Controllers
+
+@route('/parent/create', methods=['POST'])
+def create_parent():
+
+@route('/parent/update', methods=['POST'])
+def update_parent():
+
+@route('/parent/delete', methods=['POST'])
+def delete_parent():
+
+@route('/parent', methods=['GET'])
+def get_parent():
+
+@route('/child/create', methods=['POST'])
+def create_child():
+
+@route('/child/update', methods=['POST'])
+def update_child():
+
+@route('/child/delete', methods=['POST'])
+def delete_child():
+
+@route('/child', methods=['GET'])
+def get_child():
+
+@route('/parent/add_child', methods['POST'])
+def add_child():
+
+@route('/parent/remove_child', methods['POST'])
+def remove_child():
+```
+
+#### After Minisync: Controllers
+
+The object sychronization pattern is simply the recognition that all of the above code can be expressed in a 'relational operations grammar' whose derivations are JSON objects. The server can figure out the rest. Since form-based websites are being replaced by clients that build JSON objects, syncing objects is more natural than REST endpoint proliferation.
+
+```py
+from app import Minisync, models, session_backend
+
+@app.route('/api/syncResources', methods=['POST'])
+def syncResources():
+    data = json.loads(request.data) # {'user_model.User': {'id': 3, 'first_name': 'Joe'}}
+    for resource_name, attr_dict in data.iteritems():
+        mapper_module_name, mapper_class_name = resource_name.split('.')
+        mapper_module = getattr(models, mapper_module_name)
+        mapper_class = getattr(mapper_module, mapper_class_name)
+        
+        changed_object = Minisync(mapper_class, attr_dict,
+			user=session_backend.current_user)
+			
+					
+		# Notify client. You could build up a list of changed objects,
+		# 	call to_serializable_dict() on each and send them back to the client,
+		# 	or build an endpoint that takes one object at a time.
+		#	That would look something like:
+        # 	data = changed_object.to_serializable_dict()
+        #	return render(jsonify, ajax.payload("success", data))
+
+```
+
 ### What's the goal?
 
 Minisync eliminates mapper-layer profileration by abstracting away useless mapper layers between your database API and your web application client. 
