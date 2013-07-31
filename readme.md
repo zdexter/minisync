@@ -2,6 +2,8 @@
 
 Minisync is a tool to {create, read, update, delete, associate, disassociate} instances of your SQLAlchemy models by sending the server some JSON representing a changeset. Minisync will serialize the changeset, treat it as a single unit of work, flush it to the database and optionally commit it.
 
+Minisync gets rid of the primary sources of boilerplate in web applications by handling authorization and replacing REST endpoints with a parser for a relational operations grammar. This means that for most use cases, you can pass JavaScript objects to the server and let it figure out the rest without having to create and maintain endpoints every time you add new database models.
+
 ### Before and After
 
 #### Before Minisync: Controllers (Flask example)
