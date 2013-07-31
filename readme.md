@@ -181,7 +181,7 @@ For example, if id_col_name == 'id', {'id': 3, 'name': 'Jane Doe'} will update t
 #### Update: Change name and city
 
 ```py
-{'user_model.MyUser': {'_id': 1, 'name': 'Jane Doe', addresses: [{
+{'user_model.MyUser': {'id': 1, 'name': 'Jane Doe', addresses: [{
 											'id': 1,
 											'city': 'Brooklyn'}]}}
 ```
