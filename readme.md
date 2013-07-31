@@ -1,5 +1,7 @@
 ## Minisync
 
+[![Build Status](https://travis-ci.org/Tutorspree/minisync.png?branch=master)](https://travis-ci.org/Tutorspree/minisync)
+
 Minisync is a library to give your web app its own relational backend-as-a-service. 
  
 #### What does it do?
