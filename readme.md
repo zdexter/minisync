@@ -12,6 +12,14 @@ Minisync will {create, read, update, delete, associate, disassociate} instances 
 
 Minisync gets rid of the primary sources of boilerplate in web applications by handling authorization and replacing REST endpoints with a parser for a relational operations grammar. This means that for most use cases, you can pass JavaScript objects to the server and let it figure out the rest without having to create and maintain endpoints every time you add new database models.
 
+#### How it works on the client side
+
+To implement Minisync, you first serialize your mapper class instance to JSON ([see an example](https://github.com/Tutorspree/minisync#example-derivations)). The client starts out with a JavaScript object containing a serialized database row and its related entities. After the client changes the document, you run a diff algorithm on the JavaScript object and submit the diff to the server. [Here are some example diffsets](https://github.com/Tutorspree/minisync#create-a-new-user-associate-a-new-address-record-with-that-user).
+
+The server figures out whether it should create, update or delete the parent document and any children included in the nested document. It also figures out whether it should associate or disassociate any child objects.
+
+Pretty cool, right? Now you don’t have to write server-side controllers or views for your CRUD logic.
+
 ### Before and After
 
 #### Before Minisync: Controllers (Flask example)
@@ -100,6 +108,24 @@ def syncResources():
 
 [1-M Relationships using SQLAlchemy and the Flask microframework](https://github.com/Tutorspree/minisync/wiki/flask-example)
 
+## More Project Info
+
+### Current Status
+
+* Minisync is functional alpha software
+* Covered by tests
+* Secure
+* Usable anywhere SQLAlchemy is used
+
+### TODO
+
+* Document and open source our companion client-side library for AngularJS
+* Deserialization: Type checking and error handling for invalid types
+* Tests for nested documents
+* Validation hooks (use SQLAlchemy's existing validation tools)
+* Support multi-column primary keys
+* More security documentation
+
 ### What are Minisync's goals?
 
 Minisync eliminates mapper-layer profileration by abstracting away useless mapper layers between your database API and your web application client. 
@@ -120,24 +146,6 @@ It does this by implementing an object synchronization pattern.
 -> Homogenous exception handling: The server should be a black box that will safely accept any input, return a standardized response if that input is invalid, and return a standardized response if that input is valid.
 
 Writing Create, Read, Update and Delete applications should be this easy.
-
-## Project Info
-
-### Current Status
-
-* Minisync is functional alpha software
-* Covered by tests
-* Secure
-* Usable anywhere SQLAlchemy is used
-
-### TODO
-
-* Document and open source our companion client-side library for AngularJS
-* Deserialization: Type checking and error handling for invalid types
-* Tests for nested documents
-* Validation hooks (use SQLAlchemy's existing validation tools)
-* Support multi-column primary keys
-* More security documentation
 
 ## Relational Operations Grammar
 
