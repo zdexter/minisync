@@ -1,6 +1,12 @@
 ## Minisync
 
-Minisync is a tool to {create, read, update, delete, associate, disassociate} instances of your SQLAlchemy models by sending the server some JSON representing a changeset. Minisync will serialize the changeset, treat it as a single unit of work, flush it to the database and optionally commit it.
+Minisync is a library to give your web app its own relational backend-as-a-service. 
+ 
+#### What does it do?
+
+Minisync will {create, read, update, delete, associate, disassociate} instances of your SQLAlchemy models by sending the server some JSON representing a changeset. Minisync will serialize the changeset, treat it as a single unit of work, flush it to the database and optionally commit it.
+
+#### How does this help me?
 
 Minisync gets rid of the primary sources of boilerplate in web applications by handling authorization and replacing REST endpoints with a parser for a relational operations grammar. This means that for most use cases, you can pass JavaScript objects to the server and let it figure out the rest without having to create and maintain endpoints every time you add new database models.
 
@@ -21,43 +27,43 @@ class ChildThing():
 
 @route('/parent/create', methods=['POST'])
 def create_parent():
-	# Tons of boilerplate
+	# Tons of boilerplate for object-level authorization and ORM calls
 
 @route('/parent/update', methods=['POST'])
 def update_parent():
-	# Tons of boilerplate
+	# Tons of boilerplate for object-level authorization and ORM calls
 
 @route('/parent/delete', methods=['POST'])
 def delete_parent():
-	# Tons of boilerplate
+	# Tons of boilerplate for object-level authorization and ORM calls
 
 @route('/parent', methods=['GET'])
 def get_parent():
-	# Tons of boilerplate
+	# Tons of boilerplate for object-level authorization and ORM calls
 
 @route('/child/create', methods=['POST'])
 def create_child():
-	# Tons of boilerplate
+	# Tons of boilerplate for object-level authorization and ORM calls
 
 @route('/child/update', methods=['POST'])
 def update_child():
-	# Tons of boilerplate
+	# Tons of boilerplate for object-level authorization and ORM calls
 
 @route('/child/delete', methods=['POST'])
 def delete_child():
-	# Tons of boilerplate
+	# Tons of boilerplate for object-level authorization and ORM calls
 
 @route('/child', methods=['GET'])
 def get_child():
-	# Tons of boilerplate
+	# Tons of boilerplate for object-level authorization and ORM calls
 
 @route('/parent/add_child', methods['POST'])
 def add_child():
-	# Tons of boilerplate
+	# Tons of boilerplate for object-level authorization and ORM calls
 
 @route('/parent/remove_child', methods['POST'])
 def remove_child():
-	# Tons of boilerplate
+	# Tons of boilerplate for object-level authorization and ORM calls
 ```
 
 #### After Minisync: Controllers
