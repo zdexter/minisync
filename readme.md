@@ -123,6 +123,7 @@ Writing Create, Read, Update and Delete applications should be this easy.
 
 ### Current Status
 
+* Minisync is functional alpha software
 * Covered by tests
 * Secure
 * Usable anywhere SQLAlchemy is used
