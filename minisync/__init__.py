@@ -137,8 +137,9 @@ class Minisync(object):
                         child_mapper_obj, was_created = self._getOrCreateMapperObj(child_class, child_attr_dict, user, id_col_name)
                         # {A,D}: Associate or disassociate, if so instructed
                         association_modified = self._handleRelation(mapper_obj, mapper_obj_or_list, child_mapper_obj, child_attr_dict, user)
-                        if was_created or (not association_modified):
+                        if was_created:
                             mapper_obj_or_list.append(child_mapper_obj)
+                        if was_created or (not association_modified):
                             self._resolveAndSet(child_class, child_attr_dict, child_mapper_obj, user=user)
         return mapper_obj
 
