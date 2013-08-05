@@ -62,6 +62,29 @@ class ModelsTestCase(TestCase):
         thing = models.Thing.query.filter_by(user_id=3).first()
         self.assertEqual(thing.description, "User ID 3 created a thing.")
 
+    def test_embedded_create(self):
+        user = models.SyncUser.query.filter_by(id=3).first()
+        test_string = 'User ID 3 created an embedded thing.'
+        child_thing = {'description': test_string} 
+        new_thing = self.sync(models.Thing,
+            {'user_id': 3, 'description': "User ID 3 created a thing.",
+             'children': [child_thing]}, user=user)
+        self.assertEqual(new_thing.children[0].description, test_string)
+        # Database step
+        created_parent_thing = models.Thing.query.filter_by(user_id=3).first()
+        self.assertEqual(created_parent_thing.children[0].description, test_string)
+
+    def test_create_with_existing_parent(self):
+        user = models.SyncUser.query.filter_by(id=3).first()
+        test_string = 'User ID 1 created an embedded thing.'
+        child_thing = {'description': test_string} 
+        new_thing = self.sync(models.Thing,
+                {'id': 1, 'children': [child_thing]}, user=user)
+        self.assertEqual(new_thing.children[0].description, test_string)
+        # Database step
+        created_parent_thing = models.Thing.query.filter_by(user_id=1).first()
+        self.assertEqual(created_parent_thing.children[0].description, test_string)
+
     @raises(PermissionError)
     def test_create_permission(self):
         new_thing = self.sync(models.Thing, {'user_id': 2, 'description': "Hello."}, user=self.user)
