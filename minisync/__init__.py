@@ -88,6 +88,7 @@ class Minisync(object):
         Raises:
             PermissionError
         """
+        was_created = False
         if id_col_name in attr_dict.keys():
             existing_id = attr_dict.get(id_col_name)
             mapper_obj = mapper_class()
@@ -97,7 +98,8 @@ class Minisync(object):
             if not mapper_class.permit_create(attr_dict, user=user):
                 raise PermissionError()
             mapper_obj = self._create(mapper_class, attr_dict, user=user)
-        return mapper_obj
+            was_created = True
+        return mapper_obj, was_created
 
     def _resolveAndSet(self, mapper_class, attr_dict, mapper_obj=None, user=None, id_col_name='id'):
         """
@@ -115,7 +117,7 @@ class Minisync(object):
 
         # Get or {C}: Create
         if not mapper_obj:
-            mapper_obj = self._getOrCreateMapperObj(mapper_class, attr_dict, user, id_col_name)
+            mapper_obj, _ = self._getOrCreateMapperObj(mapper_class, attr_dict, user, id_col_name)
         for attr_name, attr_val in attr_dict.iteritems():
             # {U}: Update
             if attr_name != id_col_name and attr_name in _getAttributeNames(mapper_obj.__class__):
@@ -132,12 +134,12 @@ class Minisync(object):
                     else: # 1-1 or M-1
                         relations_to_process.append(attr_val)
                     for child_attr_dict in relations_to_process:
-                        child_mapper_obj = self._getOrCreateMapperObj(child_class, child_attr_dict, user, id_col_name)
+                        child_mapper_obj, was_created = self._getOrCreateMapperObj(child_class, child_attr_dict, user, id_col_name)
                         # {A,D}: Associate or disassociate, if so instructed
                         association_modified = self._handleRelation(mapper_obj, mapper_obj_or_list, child_mapper_obj, child_attr_dict, user)
-                        if not association_modified: # It's an update, create or delete
+                        if was_created or (not association_modified):
+                            mapper_obj_or_list.append(child_mapper_obj)
                             child = self._resolveAndSet(child_class, child_attr_dict, child_mapper_obj, user=user)
-                            mapper_obj_or_list.append(child)
         return mapper_obj
 
     def _handleRelation(self, parent, instrumented_list, child, child_attr_dict, user):
@@ -187,7 +189,7 @@ class Minisync(object):
                 return False
         return True
 
-    def _update(self, mapper_obj, field, val, user):
+    def _update(self, mapper_obj, field, val, user, skip_perms=False):
         """
         Update a given field and value on a mapper class instance in the current ORM session.
         Arguments:
@@ -195,6 +197,7 @@ class Minisync(object):
             field - a string, the name of the attribute to update
             val - a type instance, the new value of the field
             user - an obj, a mapper class instance corresponding to the current application user
+            [skip_perms] - a boolean, whether (True) or not (False) we should skip the permission check
         Return:
             mapper_obj - an obj, a mapper class instance whose attribute value for the given field
                 has been updated with the given value.
