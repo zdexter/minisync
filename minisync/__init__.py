@@ -111,9 +111,11 @@ class Minisync(object):
 
         # {D}: Delete
         # No need to proceed further (for example, for updates) if we are doing this
-        op = getattr(mapper_class, '_op', None)
+        op = attr_dict.get('_op', None)
+        print op
+        print attr_dict
         if op == 'delete':
-            return self._delete(mapper_class, user)
+            return self._delete(mapper_obj, user)
 
         # Get or {C}: Create
         if not mapper_obj:
@@ -224,7 +226,7 @@ class Minisync(object):
         Raises:
             PermissionError
         """
-        if not existing_record.permit_delete(mapper_obj, user=user):
+        if not mapper_obj.permit_delete(user=user):
             raise PermissionError()
         self.db.session.delete(mapper_obj)
         return True
