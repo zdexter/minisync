@@ -1,5 +1,5 @@
 import os
- 
+
 from unittest import TestCase
 from nose.tools import raises
 
@@ -7,12 +7,12 @@ from flask import Flask, current_app
 from flask.ext.testing import TestCase
 from flask.ext.principal import Principal, Identity, AnonymousIdentity, \
      identity_changed
- 
+
 import unittest
 import fixtures
 import models
 from minisync import Minisync, PermissionError
- 
+
 class ModelsTestCase(TestCase):
 
     def create_app(self):
@@ -31,7 +31,7 @@ class ModelsTestCase(TestCase):
         self.sync = Minisync(self.db)
 
         return app
- 
+
     def setUp(self):
         self.db.create_all()
         fixtures.install(self.app, *fixtures.all_data)
@@ -41,7 +41,7 @@ class ModelsTestCase(TestCase):
     def tearDown(self):
         self.db.session.remove()
         self.db.drop_all()
- 
+
     # Serialization
     # ------------------------------------------------------------------------
 
@@ -123,8 +123,8 @@ class ModelsTestCase(TestCase):
         user = models.SyncUser.query.filter_by(id=3).first()
         old = self.sync(models.Thing, {
             'children': [{
-                'description': "Foobar"
-            }],
+                'description': 'Foobar'
+             }],
             'user_id': user.id,
             'test': 'yo',
             'description': "Foobaz"
@@ -133,7 +133,7 @@ class ModelsTestCase(TestCase):
 
         parent = self.sync(models.Thing, {
             'children': [{
-                'id': 1,
+                'id': old_id,
                 'description': 'Boom blergh blegh' # I'm really good at this naming thing
             }],
             'id': old.id
@@ -165,6 +165,64 @@ class ModelsTestCase(TestCase):
         thing = models.Thing.query.filter_by(user_id=3).first()
         self.assertEqual(thing.children[0].description, "Foobar")
 
+    def test_associate_1to1(self):
+        user = models.SyncUser.query.filter_by(id=3).first()
+        only_child = self.sync(models.ChildThing, {
+            'description': 'Foobar'
+        }, user=user)
+
+        parent = self.sync(models.Thing, {
+            'only_child': {
+                'id': only_child.id,
+                '_op': 'associate'
+            },
+            'user_id': 3,
+            'id': 1
+        }, user=user)
+        self.assertEqual(parent.only_child.description, 'Foobar')
+
+        # Database step
+        thing = models.Thing.query.filter_by(user_id=3).first()
+        self.assertEqual(thing.only_child.description, "Foobar")
+
+    def test_associate_existing_1to1(self):
+        user = models.SyncUser.query.filter_by(id=3).first()
+        only_child = models.ChildThing.query.filter_by(id=3).first()
+
+        parent = self.sync(models.Thing, {
+            'only_child': {
+                'id': only_child.id,
+                '_op': 'associate'
+            },
+            'user_id': 3,
+            'id': 1
+        }, user=user)
+        self.assertEqual(parent.only_child.description, 'Blergh')
+
+        # Database step
+        thing = models.Thing.query.filter_by(user_id=3).first()
+        self.assertEqual(thing.only_child.description, 'Blergh')
+
+    def test_disassociate_1to1(self):
+        user = models.SyncUser.query.filter_by(id=3).first()
+        only_child = self.sync(models.ChildThing, {
+            'description': 'Foobar'
+        }, user=user)
+
+        parent = self.sync(models.Thing, {
+            'children': [{
+                'id': only_child.id,
+                '_op': 'disassociate'
+            }],
+            'user_id': 3,
+            'id': 1
+        }, user=user)
+        self.assertEqual(parent.only_child, None)
+
+        # Database step
+        thing = models.Thing.query.filter_by(user_id=3).first()
+        self.assertEqual(thing.only_child, None)
+
     @raises(PermissionError)
     def test_bad_association(self):
         # make sure users can't add objects to other users' objects via FK
@@ -173,7 +231,7 @@ class ModelsTestCase(TestCase):
             'description': 'Barf',
             'parent_id': 3  #owned by userid 2
         }, user=self.user)
-    
+
     def test_disassociate(self):
         child = self.sync(models.ChildThing, {
             'description': 'Foobar'
@@ -199,7 +257,6 @@ class ModelsTestCase(TestCase):
 
         # Database step
         thing = models.Thing.query.filter_by(user_id=1).first()
-        print thing.children
         self.assertEqual(thing.children, [])
 
 if __name__ == '__main__':

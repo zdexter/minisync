@@ -1,18 +1,18 @@
 from fixture import DataSet, SQLAlchemyFixture
 from fixture.style import NamedDataStyle
 from sqlalchemy import create_engine
- 
+
 import models
- 
+
 def install(app, *args):
     engine = create_engine(app.config['SQLALCHEMY_DATABASE_URI'])
     db = SQLAlchemyFixture(env=models, style=NamedDataStyle(), engine=engine)
     data = db.data(*args)
     data.setup()
     db.dispose()
- 
+
 class SyncUserData(DataSet):
- 
+
     class user01:
         username = "Thomas"
         email = "me@thomasboyt.com"
@@ -20,7 +20,7 @@ class SyncUserData(DataSet):
     class user02:
         username = "Bruce"
         email = "bruce@wayneenterprises.com"
-    
+
     class user03:
         username =  "Zach"
         email = "zach@tutorspree.com"
@@ -44,6 +44,12 @@ class ChildThingData(DataSet):
     class child_thing01:
         thing_id = 3
         description = "Blergh"
- 
+
+    class child_thing03:
+        id = 3
+        thing_id = 3
+        description = "Blergh"
+
 # A simple trick for installing all fixtures from an external module.
-all_data = (SyncUserData, ThingData,)
+all_data = (SyncUserData, ThingData, ChildThingData,)
+

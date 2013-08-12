@@ -21,6 +21,8 @@ class Thing(db.Model):
     description =   db.Column(db.Text)
     children =      db.relationship('ChildThing', primaryjoin='ChildThing.parent_id == Thing.id',
                                     cascade='delete', backref=db.backref('parent'))
+    only_child =    db.relationship('ChildThing', primaryjoin='ChildThing.parent_id == Thing.id',
+                                    uselist=False, backref=db.backref('only_parent', uselist=False))
 
     @staticmethod
     @requireUser
@@ -30,7 +32,7 @@ class Thing(db.Model):
     @requireUser
     def permit_update(self, obj_dict, user=None):
         return user.id == self.user_id or obj_dict.get('user_id', None)
-    
+
     @hybrid_property
     def test(self):
         return 'hi'
