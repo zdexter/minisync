@@ -112,8 +112,6 @@ class Minisync(object):
         # {D}: Delete
         # No need to proceed further (for example, for updates) if we are doing this
         op = attr_dict.get('_op', None)
-        print op
-        print attr_dict
         if op == 'delete':
             return self._delete(mapper_obj, user)
 
