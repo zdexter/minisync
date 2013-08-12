@@ -1,5 +1,6 @@
 from sqlalchemy.orm import class_mapper, ColumnProperty
 from sqlalchemy.orm.properties import RelationshipProperty
+from sqlalchemy.orm.collections import InstrumentedList
 from minisync.mixins.sqlalchemy import JsonSerializer
 from minisync.exceptions import PermissionError
 
@@ -34,7 +35,7 @@ class Minisync(object):
             mapper_class - a metaclass
             property_dict - a dict, a JSON object whose keys are representations of the rows or relations
                               to sync. Ex: `email` or `user`
-                              Values can be scalars or lists. Lists are turned into sqlalchemy.orm.collection.InstrumentedList objects.
+                              Values can be scalars or lists. Lists are turned into sqlalchemy.orm.collections.InstrumentedList objects.
             [id_col_name] - a string, the name of the attr on mapper_class instances that should serve as an
                             existential check (TODO: Support multi-column primary keys) ['id']
             [commit] - a boolean, whether (True) or not (False) to commit the flushed objects. [False]
@@ -78,7 +79,7 @@ class Minisync(object):
             raise PermissionError()
         self.db.session.add(mapper_obj)
         return mapper_obj
-    
+
     def _getOrCreateMapperObj(self, mapper_class, attr_dict, user, id_col_name):
         """
         Retrieve a row corresponding to the given ID column if it exists, and create it in the session
@@ -124,31 +125,32 @@ class Minisync(object):
                 # Terminal attribute - resolves to a column on the current mapper.
                 self._update(mapper_obj, attr_name, attr_val, user=user)
             else: # Nonterminal - continue resolution with attribute name
-                mapper_obj_or_list = getattr(mapper_obj, attr_name)
+                name_or_relation = getattr(mapper_obj, attr_name)
                 relations_to_process = []
                 prop = getattr(mapper_class, attr_name)
                 if hasattr(prop, 'property') and isinstance(prop.property, RelationshipProperty):
                     child_class = prop.property.mapper.class_
-                    if isinstance(mapper_obj_or_list, list):  # i-M relation
+                    if isinstance(name_or_relation, list):  # i-M relation
                         [relations_to_process.append(child_attr_dict) for child_attr_dict in attr_val]
                     else: # 1-1 or M-1
                         relations_to_process.append(attr_val)
+                        name_or_relation = attr_name
                     for child_attr_dict in relations_to_process:
                         child_mapper_obj, was_created = self._getOrCreateMapperObj(child_class, child_attr_dict, user, id_col_name)
                         # {A,D}: Associate or disassociate, if so instructed
-                        association_modified = self._handleRelation(mapper_obj, mapper_obj_or_list, child_mapper_obj, child_attr_dict, user)
+                        association_modified = self._handleRelation(mapper_obj, name_or_relation, child_mapper_obj, child_attr_dict, user)
                         if was_created:
-                            mapper_obj_or_list.append(child_mapper_obj)
+                            name_or_relation.append(child_mapper_obj)
                         if was_created or (not association_modified):
                             self._resolveAndSet(child_class, child_attr_dict, child_mapper_obj, user=user)
         return mapper_obj
 
-    def _handleRelation(self, parent, instrumented_list, child, child_attr_dict, user):
+    def _handleRelation(self, parent, name_or_relation, child, child_attr_dict, user):
         """
         Associate or disassociate a related object depending on what the client asked for.
         Arguments:
             parent - an obj, a mapper class instance corresponding to the parnet
-            instrumented_list - an obj, the relation with which we should deal
+            name_or_relation - an obj, the relation with which we should deal
             child - an obj, a mapper class instance corresponding to the child
             child_attr_dict - a dict, the JSON dictionary that describes the operations to be performed
                 on the child and any of its children
@@ -160,11 +162,11 @@ class Minisync(object):
         # {D}: Disassociate
         # Requires a mapper_obj parent object to disassociate from
         if op == 'disassociate':
-            return self._disassociate(parent, instrumented_list, child, user=user)
+            return self._disassociate(parent, name_or_relation, child, user=user)
         elif op == 'associate':
-            return self._associate(parent, instrumented_list, child, child_attr_dict, user=user)
+            return self._associate(parent, name_or_relation, child, child_attr_dict, user=user)
         return False
-    
+
     def _checkFkPermissions(self, mapper_obj, field, val, user):
         """
         Determine whether (True) or not (False) the given user is allowed to update
@@ -229,11 +231,11 @@ class Minisync(object):
         self.db.session.delete(mapper_obj)
         return True
 
-    def _associate(self, parent_obj, instrumented_list, child_obj, obj_dict, user):
+    def _associate(self, parent_obj, name_or_relation, child_obj, obj_dict, user):
         """
         Arguments:
             parent - an obj, a mapper class instance representing the row to associate to
-            instrumented_list - an obj, the relation with which we should associate the child
+            name_or_relation - an obj or str, the relation with which we should associate the child
             child - an obj, the mapper class instance to associate with the parent
             user - an obj, a mapper class instance corresponding to the current application user
         Return:
@@ -247,16 +249,18 @@ class Minisync(object):
         if not (hasattr(child_obj, 'permit_associate') and child_obj.permit_associate(parent_obj, obj_dict, user=user)):
             raise PermissionError()
 
-        if not child_obj in instrumented_list:
-            instrumented_list.append(child_obj)
-            self.db.session.add(child_obj)
+        if isinstance(name_or_relation, InstrumentedList):
+            name_or_relation.append(child_obj)
+        else:
+            setattr(parent_obj, name_or_relation, child_obj)
+            self.db.session.add(parent_obj)
         return True
 
-    def _disassociate(self, parent_obj, instrumented_list, child_obj, user):
+    def _disassociate(self, parent_obj, name_or_relation, child_obj, user):
         """
         Arguments:
             parent - an obj, a mapper class instance representing the row to disassociate from
-            instrumented_list - an obj, the relation from which to remove the child
+            name_or_relation - an obj or str, the relation from which to remove the child
             child - an obj, the mapper class instance to remove from the relation
             user - an obj, a mapper class instance corresponding to the current application user
         Return:
@@ -269,7 +273,11 @@ class Minisync(object):
             raise PermissionError()
         if not (hasattr(child_obj, 'permit_disassociate') and child_obj.permit_disassociate(parent_obj, user=user)):
             raise PermissionError()
-        instrumented_list.remove(child_obj)
-        self.db.session.add(parent_obj)
+        if isinstance(name_or_relation, InstrumentedList):
+            name_or_relation.append(child_obj)
+            name_or_relation.remove(child_obj)
+        else:
+            setattr(parent_obj, name_or_relation, child_obj)
+            self.db.session.add(parent_obj)
         return True
 
