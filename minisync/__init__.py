@@ -162,9 +162,9 @@ class Minisync(object):
         # {D}: Disassociate
         # Requires a mapper_obj parent object to disassociate from
         if op == 'disassociate':
-            return self._disassociate(parent, name_or_relation, child, user=user)
+            return self._disassociate(parent, name_or_relation, child, user)
         elif op == 'associate':
-            return self._associate(parent, name_or_relation, child, child_attr_dict, user=user)
+            return self._associate(parent, name_or_relation, child, child_attr_dict, user)
         return False
 
     def _checkFkPermissions(self, mapper_obj, field, val, user):
