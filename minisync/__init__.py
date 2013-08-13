@@ -274,7 +274,6 @@ class Minisync(object):
         if not (hasattr(child_obj, 'permit_disassociate') and child_obj.permit_disassociate(parent_obj, user=user)):
             raise PermissionError()
         if isinstance(name_or_relation, InstrumentedList):
-            name_or_relation.append(child_obj)
             name_or_relation.remove(child_obj)
         else:
             setattr(parent_obj, name_or_relation, child_obj)

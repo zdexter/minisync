@@ -210,6 +210,16 @@ class ModelsTestCase(TestCase):
         }, user=user)
 
         parent = self.sync(models.Thing, {
+            'only_child': {
+                'id': only_child.id,
+                '_op': 'associate'
+            },
+            'user_id': 3,
+            'id': 1
+        }, user=user)
+        self.assertEqual(parent.only_child.description, 'Foobar')
+
+        parent = self.sync(models.Thing, {
             'children': [{
                 'id': only_child.id,
                 '_op': 'disassociate'
