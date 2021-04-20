@@ -4,7 +4,7 @@ Flask-SQLAlchemy==1.0
 Flask-Testing==0.4
 Jinja2==2.7
 SQLAlchemy==0.8.2
-Werkzeug==0.9.1
+Werkzeug==0.15.3
 blinker==1.3
 fixture==1.5
 wsgiref==0.1.2
